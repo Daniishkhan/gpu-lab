@@ -5,7 +5,7 @@
 - **Estimated VRAM / Runtime / Cost:** `~18 GB (BF16)` or `~6 GB (Q4)` · `~20 min` · `~$0.25`
 
 ## Pre-Flight Checks (do locally first)
-- [ ] Read `sections/01-matrices-and-gpus/concepts/what-is-a-gpu.html` and Stage 2 chapters`
+- [ ] Read `sections/01-matrices-and-gpus/concepts/what-is-a-gpu.html` and Stage 2 chapters
 - [ ] Pass `python3 -m pytest -k gpu_roofline`
 - [ ] Have a Hugging Face account & read token (`HF_TOKEN`) ready
 

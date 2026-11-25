@@ -85,7 +85,7 @@
 <!-- ============================================================ -->
 <h2 id="s2"><span class="sec-num">2</span>Why does matrix multiplication love 10,000 prep cooks?</h2>
 
-<p>Look at any cell <code>C[i, j]</code> in a matrix product <code>C = A @ B</code>. It is simply the dot product of row <code>i</code> of <code>A</code> with column <code>j</code> of <code>B</code>. Notice what it does <em>not</em> depend on: it never waits for <code>C[i, j-1]</code> or <code>C[i-1, j]</code>!</p>
+<p>Look at any cell <code>C[i, j]</code> in a matrix product <code>C = A @ B</code>. It is the dot product of row <code>i</code> of <code>A</code> with column <code>j</code> of <code>B</code>. Notice what it does <em>not</em> depend on: it never waits for <code>C[i, j-1]</code> or <code>C[i-1, j]</code>!</p>
 
 <pre class="diagram"><code>Every output cell is 100% independent — zero waiting on neighbors:
 
@@ -119,10 +119,10 @@ C[4095,4095]                  ← Cook #10,000+</code></pre>
   <li><b>Hallway speed — Memory Bandwidth (GB/sec):</b> How fast ingredients (weights and vectors) can walk from the GPU's storage shelf (<b>VRAM / HBM</b>) into the cooks' hands (e.g., an L4 moves <b>300 GB/s</b>; an H100 moves <b>3,350 GB/s</b>).</li>
 </ol>
 
-<p>Think about what happens when you ask those 10,000 cooks to process <b>one single token</b> (generating 1 word for 1 user) vs. <b>a batch of 1,024 tokens</b> (reading a prompt or training) through a <code>12B</code> BF16 model (`24 GB` of weights):</p>
+<p>Think about what happens when you ask those 10,000 cooks to process <b>one single token</b> (generating 1 word for 1 user) vs. <b>a batch of 1,024 tokens</b> (reading a prompt or training) through a <code>12B</code> BF16 model (<code>24 GB</code> of weights):</p>
 
 <ul>
-  <li><b>Generating 1 token (batch = 1):</b> You must walk <b>all 24 GB of weights</b> through the hallway from VRAM into the chip, do just <b>2 ops per weight</b> (`24 billion` ops total), and throw the weights away! That's only <b>1 FLOP per byte</b> fetched. On an H100 (which wants <b>~295 FLOPs per byte</b> to stay busy!), the cooks finish chopping in 0.02 ms and then sit staring at the ceiling for <b>7.1 ms</b> waiting for the hallway! You are <b>memory-bandwidth-bound</b>.</li>
+  <li><b>Generating 1 token (batch = 1):</b> You must walk <b>all 24 GB of weights</b> through the hallway from VRAM into the chip, do just <b>2 ops per weight</b> (<code>24 billion</code> ops total), and throw the weights away! That's only <b>1 FLOP per byte</b> fetched. On an H100 (which wants <b>~295 FLOPs per byte</b> to stay busy!), the cooks finish chopping in 0.02 ms and then sit staring at the ceiling for <b>7.1 ms</b> waiting for the hallway! You are <b>memory-bandwidth-bound</b>.</li>
   <li><b>Processing 1,024 tokens at once (prefill or training):</b> You walk those exact same 24 GB of weights through the hallway <em>once</em>, and reuse every weight across all 1,024 tokens! Now you do <b>1,024 FLOPs per byte</b> fetched — the cooks stay 100% busy and you are <b>compute-bound</b>!</li>
 </ul>
 
@@ -131,7 +131,7 @@ C[4095,4095]                  ← Cook #10,000+</code></pre>
   <div class="cap">Toggle GPU and drag <b>Tokens in Batch</b> from 1 (single-user decode) up to 1,024 (prefill / batched serving). Watch how single-token decode wastes &gt;99% of the GPU's compute waiting on the VRAM hallway — and why batching 16–64 users unlocks huge throughput for almost the same time per step!</div>
 </div>
 
-<p>That ratio — <b>math ops divided by bytes moved</b> — has a classic hardware name: <b>Arithmetic Intensity</b> (FLOPs/byte). The crossover point where cooking speed exactly equals hallway speed (`peak_FLOPs / memory_bandwidth`) is the GPU's <b>ridge point</b> (typically ~250–400 FLOPs/byte on modern NVIDIA GPUs). Below the ridge point, faster compute doesn't help — only moving <em>fewer bytes</em> or <em>reusing weights across more tokens</em> speeds you up!</p>
+<p>That ratio — <b>math ops divided by bytes moved</b> — has a classic hardware name: <b>Arithmetic Intensity</b> (FLOPs/byte). The crossover point where cooking speed exactly equals hallway speed (<code>peak_FLOPs / memory_bandwidth</code>) is the GPU's <b>ridge point</b> (typically ~250–400 FLOPs/byte on modern NVIDIA GPUs). Below the ridge point, faster compute doesn't help — only moving <em>fewer bytes</em> or <em>reusing weights across more tokens</em> speeds you up!</p>
 
 <div class="keyidea"><b>The Roofline Law of LLMs:</b> Single-user text generation (decode) is almost always <b>memory-bandwidth-bound</b> (limited by reading the weights out of VRAM once per token). Prompt reading (prefill) and training are <b>compute-bound</b> (limited by Tensor Core FLOPs).</div>
 
@@ -223,9 +223,9 @@ C[4095,4095]                  ← Cook #10,000+</code></pre>
 <h2 id="summary"><span class="sec-num">✓</span>What to remember</h2>
 <ol>
   <li>A GPU trades a few clever serial CPU cores for thousands of simple parallel cores + Tensor Cores — ideal for independent matrix math, terrible for pointer chasing.</li>
-  <li>A single matrix multiply `(M, K) @ (K, N)` performs `2 × M × K × N` FLOPs.</li>
-  <li>Every GPU has two speed walls: <b>compute (FLOPs/s)</b> and <b>VRAM bandwidth (GB/s)</b>. Their ratio (`FLOPs/s ÷ GB/s`) is the <b>ridge point</b>.</li>
-  <li>Below the ridge point (single-user decode) you are <b>memory-bandwidth-bound</b> (`max tok/s ≈ VRAM_BW / active_weight_GB`); above it (training, long prefill, big batches) you are <b>compute-bound</b>.</li>
+  <li>A single matrix multiply <code>(M, K) @ (K, N)</code> performs <code>2 × M × K × N</code> FLOPs.</li>
+  <li>Every GPU has two speed walls: <b>compute (FLOPs/s)</b> and <b>VRAM bandwidth (GB/s)</b>. Their ratio (<code>FLOPs/s ÷ GB/s</code>) is the <b>ridge point</b>.</li>
+  <li>Below the ridge point (single-user decode) you are <b>memory-bandwidth-bound</b> (<code>max tok/s ≈ VRAM_BW / active_weight_GB</code>); above it (training, long prefill, big batches) you are <b>compute-bound</b>.</li>
   <li>Keep active weights in VRAM — spilling across PCIe to CPU RAM narrows your doorway by 10–50×.</li>
 </ol>
 

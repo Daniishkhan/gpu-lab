@@ -2,7 +2,7 @@
 /*
  * Load chapter pages in a headless browser and report what a reader would hit.
  *
- *   node tools/check_page.js sections/02-algorithms/concepts/sorting.html [more.html] [--shots DIR]
+ *   node tools/check_page.js sections/01-matrices-and-gpus/concepts/what-is-a-gpu.html [more.html] [--shots DIR]
  *
  * For each page, at desktop (1280x900) and phone (390x844) width:
  *   - console errors and uncaught exceptions
@@ -14,7 +14,8 @@
  * every h2 has an id; no duplicate ids.
  * --shots DIR saves full-page screenshots: desktop in all four themes, phone in dark.
  *
- * Needs Playwright (pre-installed in Claude's cloud sessions; locally: npm i -g playwright).
+ * Needs Playwright (install locally: npm i -g playwright && npx playwright install chromium).
+ * For zero-dependency static HTML linting without Playwright, run tools/check_chapter.py.
  * Exits 1 if anything was found.
  */
 const path = require("path");

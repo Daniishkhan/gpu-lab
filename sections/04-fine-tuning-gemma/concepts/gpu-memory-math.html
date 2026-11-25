@@ -73,7 +73,7 @@
 <!-- ============================================================ -->
 <h2 id="s2"><span class="sec-num">2</span>Pile #1: The model weights themselves (precision math)</h2>
 
-<p>Every parameter in a neural network is just one number. How much workbench space do <code>P</code> billion parameters take? Simply multiply <code>P</code> by <b>bytes per parameter</b>:</p>
+<p>Every parameter in a neural network is just one number. How much workbench space do <code>P</code> billion parameters take? Multiply <code>P</code> by <b>bytes per parameter</b>:</p>
 
 <div class="table-wrap"><table>
   <thead><tr><th>Precision</th><th>Bytes / param</th><th>10B-param mental math</th><th>Where you use it</th></tr></thead>
@@ -180,7 +180,7 @@
     <button data-correct>No — all 26B weights must sit in VRAM (~58 GB in BF16) so the router can pick any expert; you need 4-bit (~14.4 GB) or a larger GPU</button>
     <button>Yes, as long as sequence length stays under 2,048 tokens</button>
   </div>
-  <div class="fb right"><p>Correct! MoE trades <b>compute</b> (FLOPs and decode speed scale with active 4B) for <b>memory</b> (VRAM scales with total 26B). That's why 4-bit QAT (`~14.4 GB`) is the sweet spot for serving 26B-A4B on a single 24 GB GPU.</p></div>
+  <div class="fb right"><p>Correct! MoE trades <b>compute</b> (FLOPs and decode speed scale with active 4B) for <b>memory</b> (VRAM scales with total 26B). That's why 4-bit QAT (<code>~14.4 GB</code>) is the sweet spot for serving 26B-A4B on a single 24 GB GPU.</p></div>
   <div class="fb wrong"><p>The router decides <em>at runtime, token by token</em> which experts to wake up. If inactive experts lived on disk or CPU RAM, fetching them would stall every token by milliseconds. All 26B parameters must stay parked on the GPU workbench.</p></div>
 </div>
 

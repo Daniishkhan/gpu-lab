@@ -2,7 +2,7 @@
 """
 Prove an exercise's tests do their job, without putting a solution in the repo.
 
-  python3 tools/check_exercise.py sorts --pass ~/scratch/ref.py --fail ~/scratch/slow.py
+  python3 tools/check_exercise.py gpu_roofline --pass /tmp/ref.py --fail /tmp/bad.py
 
 Checks that:
   - the stub in the repo still raises NotImplementedError and fails its tests,
@@ -61,7 +61,7 @@ def check(module: str, solution: Path | None, folder: Path, want_pass: bool) -> 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("module", help="exercise module name, e.g. sorts")
+    ap.add_argument("module", help="exercise module name, e.g. gpu_roofline")
     ap.add_argument("--pass", dest="passing", type=Path, action="append", default=[], help="solution that must pass")
     ap.add_argument("--fail", dest="failing", type=Path, action="append", default=[], help="solution that must fail")
     args = ap.parse_args()
