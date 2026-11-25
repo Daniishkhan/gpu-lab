@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GPU &amp; Voice Workbench · gpu/lab</title>
+  <script>try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("gpu-lab:theme")) || "dark"; } catch (e) {}</script>
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/curriculum.js"></script>
+  <script src="assets/shell.js"></script>
+  <style>
+    .wb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin: 18px 0; }
+    .wb-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .wb-card h2 { margin-top: 0; font-size: 1.15rem; }
+    .wb-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; align-items: end; }
+    .wb-field { display: flex; flex-direction: column; gap: 5px; flex: 1 1 150px; }
+    .wb-field label { font: 600 0.76rem/1.2 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .wb-field select, .wb-field input[type="number"], .wb-field input[type="text"], .wb-field textarea {
+      background: var(--surface-2); color: var(--text-strong); border: 1px solid var(--border-strong);
+      border-radius: 8px; padding: 8px 10px; font: 0.9rem/1.3 var(--ui);
+    }
+    .wb-field input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .stack-bar { display: flex; height: 26px; border-radius: 8px; overflow: hidden; background: var(--surface-2); border: 1px solid var(--border); margin: 14px 0 8px; }
+    .stack-seg { height: 100%; transition: width 0.2s ease; }
+    .wb-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.84rem; color: var(--muted); margin-bottom: 12px; }
+    .wb-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+    .wb-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 12px; }
+    .wb-kpi { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+    .wb-kpi .k { font: 600 0.7rem/1.2 var(--mono); color: var(--muted); text-transform: uppercase; }
+    .wb-kpi .v { font: 700 1.25rem/1.25 var(--mono); color: var(--text-strong); margin-top: 4px; }
+    .wb-kpi.ok .v { color: var(--ok); }
+    .wb-kpi.warn .v { color: var(--warn); }
+    .wb-kpi.bad .v { color: var(--bad); }
+    .wb-alert { margin-top: 12px; padding: 10px 13px; border-radius: 8px; font-size: 0.88rem; border: 1px solid var(--border); background: var(--surface-2); }
+    .wb-alert.warn { border-color: var(--warn); background: var(--warn-soft); color: var(--text-strong); }
+    .wb-alert.ok { border-color: var(--ok); background: var(--ok-soft); color: var(--text-strong); }
+    .wb-alert.bad { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, var(--surface)); color: var(--text-strong); }
+    .threshold-line { position: relative; height: 18px; font: 600 0.72rem/1 var(--mono); color: var(--muted); margin-bottom: 4px; }
+  </style>
+</head>
+<body data-root="." data-page="workbench">
+<main class="content wide">
+  <header class="ch-head">
+    <div class="eyebrow">Offline Engineering Calculators · LocalStorage Experiment Log</div>
+    <h1>GPU &amp; Voice Workbench</h1>
+    <p class="lede">Size your GPU VRAM before renting cloud hardware, budget real-time voice latency against the 800 ms human threshold, and track every fine-tuning run in one place.</p>
+  </header>
+
+  <section class="wb-card" id="vram-calc">
+    <h2 id="s-vram">1. Gemma 4 GPU VRAM &amp; Cloud Sizing Calculator</h2>
+    <p class="muted">Estimates static weights, gradients, optimizer states, activations, KV cache, and CUDA framework overhead so you pick the cheapest GPU that won't OOM.</p>
+    <div class="wb-row">
+      <div class="wb-field">
+        <label for="m-model">Gemma 4 Model</label>
+        <select id="m-model">
+          <option value="e2b">Gemma 4 E2B (5.1B total / 2B effective · PLE · Audio+Vision)</option>
+          <option value="e4b" selected>Gemma 4 E4B (8.0B total / 4B effective · PLE · Audio+Vision)</option>
+          <option value="12b">Gemma 4 12B (Unified Encoder-Free · Audio+Vision)</option>
+          <option value="26b">Gemma 4 26B-A4B (MoE · 4B active / 26B loaded · Vision)</option>
+          <option value="31b">Gemma 4 31B (Dense · Vision)</option>
+        </select>
+      </div>
+      <div class="wb-field">
+        <label for="m-mode">Workload Mode</label>
+        <select id="m-mode">
+          <option value="infer-bf16">Inference (BF16 16-bit)</option>
+          <option value="infer-fp8">Inference (FP8 8-bit)</option>
+          <option value="infer-q4">Inference (QAT 4-bit W4A16 / Q4_0)</option>
+          <option value="qlora" selected>Fine-tune: QLoRA (4-bit base + BF16 LoRA)</option>
+          <option value="lora">Fine-tune: BF16 LoRA (recommended for Audio &amp; MoE)</option>
+          <option value="full-8bit">Fine-tune: Full FT (BF16 + 8-bit AdamW)</option>
+          <option value="full-32bit">Fine-tune: Full FT (BF16 + FP32 AdamW)</option>
+        </select>
+      </div>
+      <div class="wb-field">
+        <label for="m-ctx">Context / Seq Length: <span id="m-ctx-lbl">2,048</span></label>
+        <input id="m-ctx" type="range" min="1024" max="32768" step="1024" value="2048">
+      </div>
+      <div class="wb-field">
+        <label for="m-batch">Concurrent Streams / Micro-Batch: <span id="m-batch-lbl">4</span></label>
+        <input id="m-batch" type="range" min="1" max="32" step="1" value="4">
+      </div>
+    </div>
+
+    <div class="stack-bar" id="vram-bar" aria-label="VRAM memory breakdown"></div>
+    <div class="wb-legend" id="vram-legend"></div>
+    <div class="wb-kpi-grid" id="vram-kpis"></div>
+    <div id="vram-note"></div>
+  </section>
+
+  <section class="wb-card" id="voice-calc" style="margin-top: 20px;">
+    <h2 id="s-voice">2. Real-Time Phone Agent Latency Budget (&lt;800 ms target)</h2>
+    <p class="muted">Callers notice awkward silence around <b>800 ms</b> mouth-to-ear (human conversation averages ~200 ms). Drag each stage to see why removing hops or enabling speculative prefill matters more than shaving 15 ms off TTS.</p>
+    <div class="wb-row">
+      <div class="wb-field">
+        <label for="v-preset">Architecture Preset</label>
+        <select id="v-preset">
+          <option value="cascade">Standard Open Cascade (Parakeet + vLLM Gemma 4 + Qwen3-TTS)</option>
+          <option value="spec" selected>Speculative Prefill Cascade (Flux-style EagerEndOfTurn + MTP Gemma 4)</option>
+          <option value="hosted">Slow Naive Cascade (Cloud Whisper + Unoptimized LLM + Batch TTS)</option>
+          <option value="duplex">Native Full-Duplex S2S (Moshi / PersonaPlex / VoiceChat)</option>
+        </select>
+      </div>
+    </div>
+    <div class="wb-row">
+      <div class="wb-field"><label>Telephony &amp; Jitter: <span id="v-net-l">60</span> ms</label><input id="v-net" type="range" min="20" max="200" step="5" value="60"></div>
+      <div class="wb-field"><label>VAD / Turn End: <span id="v-vad-l">220</span> ms</label><input id="v-vad" type="range" min="40" max="600" step="10" value="220"></div>
+      <div class="wb-field"><label>STT Finalize: <span id="v-stt-l">90</span> ms</label><input id="v-stt" type="range" min="0" max="450" step="10" value="90"></div>
+      <div class="wb-field"><label>LLM TTFT: <span id="v-llm-l">190</span> ms</label><input id="v-llm" type="range" min="50" max="900" step="10" value="190"></div>
+      <div class="wb-field"><label>TTS First Audio: <span id="v-tts-l">95</span> ms</label><input id="v-tts" type="range" min="0" max="400" step="5" value="95"></div>
+    </div>
+    <div class="stack-bar" id="voice-bar" aria-label="Voice latency breakdown"></div>
+    <div class="wb-legend" id="voice-legend"></div>
+    <div class="wb-kpi-grid" id="voice-kpis"></div>
+    <div id="voice-note"></div>
+  </section>
+
+  <section class="wb-card" id="run-log" style="margin-top: 20px;">
+    <h2 id="s-runs">3. Experiment &amp; Eval Run Log (Browser Local)</h2>
+    <p class="muted">Log every Gemma 4 fine-tune, voice-cloning LoRA, or live call benchmark here. Export to Markdown whenever you commit a milestone.</p>
+    <div class="wb-row">
+      <div class="wb-field"><label for="r-name">Run Name</label><input id="r-name" type="text" placeholder="gemma4-e4b-capstone1-r16"></div>
+      <div class="wb-field"><label for="r-model">Model &amp; Method</label><input id="r-model" type="text" placeholder="Gemma 4 E4B · QLoRA r=16 lr=2e-4"></div>
+      <div class="wb-field"><label for="r-metric">Eval Score / Delta</label><input id="r-metric" type="text" placeholder="JSON pass 62% → 93% · p95 140ms"></div>
+      <div class="wb-field"><label for="r-gpu">GPU &amp; Cost</label><input id="r-gpu" type="text" placeholder="1× L4 · 22m · $0.26"></div>
+    </div>
+    <div class="wb-row">
+      <div class="wb-field"><label for="r-notes">Key Takeaway / Next Action</label><input id="r-notes" type="text" placeholder="Fixed prompt masking bug; next add 200 hard edge cases"></div>
+      <button class="btn primary" id="r-add" type="button">Add run</button>
+      <button class="btn" id="r-export" type="button">Copy Markdown</button>
+    </div>
+    <div class="table-wrap" style="margin-top:12px">
+      <table>
+        <thead><tr><th>Date</th><th>Run</th><th>Model &amp; Method</th><th>Eval / Latency</th><th>GPU &amp; Cost</th><th>Notes</th><th></th></tr></thead>
+        <tbody id="r-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  // Reference static weight footprints align with gemma.ai official tables (including PLE tables on E2B/E4B).
+  const MODELS = {
+    e2b: { name: "Gemma 4 E2B", totalB: 5.1, activeB: 2.0, bf16GB: 10.2, kvPer1kGB: 0.045, audio: true, moe: false },
+    e4b: { name: "Gemma 4 E4B", totalB: 8.0, activeB: 4.0, bf16GB: 16.0, kvPer1kGB: 0.065, audio: true, moe: false },
+    "12b": { name: "Gemma 4 12B", totalB: 12.2, activeB: 12.2, bf16GB: 24.4, kvPer1kGB: 0.11, audio: true, moe: false },
+    "26b": { name: "Gemma 4 26B-A4B MoE", totalB: 26.0, activeB: 4.0, bf16GB: 52.0, kvPer1kGB: 0.09, audio: false, moe: true },
+    "31b": { name: "Gemma 4 31B", totalB: 31.0, activeB: 31.0, bf16GB: 62.0, kvPer1kGB: 0.17, audio: false, moe: false },
+  };
+  const GPUS = [
+    { name: "1× L4 (24 GB)", vram: 24, rate: "$0.70/hr" },
+    { name: "1× RTX 4090 / A10G (24 GB)", vram: 24, rate: "$0.55/hr" },
+    { name: "1× L40S / A6000 (48 GB)", vram: 48, rate: "$1.15/hr" },
+    { name: "1× A100 / H100 (80 GB)", vram: 80, rate: "$1.80–$2.90/hr" },
+    { name: "2× H100 (160 GB · FSDP2/TP2)", vram: 160, rate: "$5.80/hr" },
+    { name: "4× H100 (320 GB · FSDP2)", vram: 320, rate: "$11.60/hr" },
+  ];
+
+  function calcVram() {
+    const m = MODELS[document.getElementById("m-model").value];
+    const mode = document.getElementById("m-mode").value;
+    const ctx = +document.getElementById("m-ctx").value;
+    const batch = +document.getElementById("m-batch").value;
+    document.getElementById("m-ctx-lbl").textContent = ctx.toLocaleString();
+    document.getElementById("m-batch-lbl").textContent = String(batch);
+
+    let weights = m.bf16GB, grads = 0, opt = 0, actKv = 0, overhead = 1.4;
+    if (mode === "infer-bf16") {
+      weights = m.bf16GB;
+      actKv = m.kvPer1kGB * (ctx / 1024) * batch;
+      overhead = weights * 0.12 + 0.8;
+    } else if (mode === "infer-fp8") {
+      weights = m.bf16GB * 0.5;
+      actKv = m.kvPer1kGB * (ctx / 1024) * batch * 0.75;
+      overhead = weights * 0.12 + 0.8;
+    } else if (mode === "infer-q4") {
+      weights = m.bf16GB * 0.28;
+      actKv = m.kvPer1kGB * (ctx / 1024) * batch;
+      overhead = weights * 0.15 + 0.7;
+    } else if (mode === "qlora") {
+      weights = m.bf16GB * 0.29;
+      const loraB = m.totalB * 0.015;
+      grads = loraB * 2;
+      opt = loraB * 4;
+      actKv = (0.45 + 0.08 * m.activeB) * (ctx / 2048) * Math.min(batch, 8) * 0.65;
+      overhead = 1.8;
+    } else if (mode === "lora") {
+      weights = m.bf16GB;
+      const loraB = m.totalB * 0.015;
+      grads = loraB * 2;
+      opt = loraB * 4;
+      actKv = (0.55 + 0.09 * m.activeB) * (ctx / 2048) * Math.min(batch, 8) * 0.7;
+      overhead = 2.0;
+    } else if (mode === "full-8bit") {
+      weights = m.bf16GB;
+      grads = m.bf16GB;
+      opt = m.totalB * 2.0;
+      actKv = (0.9 + 0.18 * m.activeB) * (ctx / 2048) * Math.min(batch, 8);
+      overhead = 3.0;
+    } else if (mode === "full-32bit") {
+      weights = m.bf16GB;
+      grads = m.bf16GB;
+      opt = m.totalB * 8.0;
+      actKv = (0.9 + 0.18 * m.activeB) * (ctx / 2048) * Math.min(batch, 8);
+      overhead = 3.5;
+    }
+
+    const total = weights + grads + opt + actKv + overhead;
+    const segs = [
+      { label: "Weights", val: weights, color: "var(--accent)" },
+      { label: "Gradients", val: grads, color: "var(--warn)" },
+      { label: "Optimizer", val: opt, color: "var(--bad)" },
+      { label: mode.startsWith("infer") ? "KV Cache" : "Activations", val: actKv, color: "var(--accent-2)" },
+      { label: "CUDA Overhead", val: overhead, color: "var(--muted)" },
+    ].filter((s) => s.val > 0.05);
+
+    const bar = document.getElementById("vram-bar");
+    bar.innerHTML = segs.map((s) => `<div class="stack-seg" style="width:${(100 * s.val / total).toFixed(1)}%;background:${s.color}" title="${s.label}: ${s.val.toFixed(1)} GB"></div>`).join("");
+    document.getElementById("vram-legend").innerHTML = segs.map((s) => `<span><i class="wb-swatch" style="background:${s.color}"></i>${s.label}: <b>${s.val.toFixed(1)} GB</b></span>`).join("");
+
+    const gpu = GPUS.find((g) => g.vram >= total * 1.08) || GPUS[GPUS.length - 1];
+    const headroom = gpu.vram - total;
+    const cls = headroom < 0 ? "bad" : headroom < 4 ? "warn" : "ok";
+    document.getElementById("vram-kpis").innerHTML = `
+      <div class="wb-kpi ${cls}"><div class="k">Estimated Peak VRAM</div><div class="v">${total.toFixed(1)} GB</div></div>
+      <div class="wb-kpi"><div class="k">Smallest Safe Cloud GPU</div><div class="v" style="font-size:1.0rem">${gpu.name}</div></div>
+      <div class="wb-kpi"><div class="k">Typical Cloud Rate</div><div class="v" style="font-size:1.0rem">${gpu.rate}</div></div>
+      <div class="wb-kpi"><div class="k">Headroom</div><div class="v">${headroom >= 0 ? "+" + headroom.toFixed(1) + " GB" : "OOM"}</div></div>
+    `;
+
+    let noteCls = "ok", noteMsg = `Clean fit on ${gpu.name}. Always reserve ~10% headroom for PyTorch allocator fragmentation.`;
+    if (mode === "qlora" && m.audio) {
+      noteCls = "warn";
+      noteMsg = `Gotcha (gemma.ai audio trap): 4-bit NF4 QLoRA works great for TEXT fine-tuning on ${m.name}, but degrades AUDIO-input projections. Switch to BF16 LoRA (or selective quantization in Unsloth) when fine-tuning speech.`;
+    } else if (mode === "qlora" && m.moe) {
+      noteCls = "warn";
+      noteMsg = `Gotcha (MoE routing): 4-bit NF4 on 26B-A4B can shift activations across 128 routed experts. Keep the router frozen and prefer BF16 Split-LoRA on an 80 GB GPU when quality matters.`;
+    } else if (headroom < 0) {
+      noteCls = "bad";
+      noteMsg = `Exceeds single-node 4× H100 estimate. Lower micro-batch size (use gradient accumulation instead), shorten sequence length, or switch from Full FT to BF16 LoRA / QLoRA.`;
+    }
+    document.getElementById("vram-note").innerHTML = `<div class="wb-alert ${noteCls}">${noteMsg}</div>`;
+  }
+  ["m-model", "m-mode", "m-ctx", "m-batch"].forEach((id) => document.getElementById(id).addEventListener("input", calcVram));
+  calcVram();
+
+  // ---- Voice Latency Budget Calculator ----
+  const PRESETS = {
+    cascade: { net: 60, vad: 300, stt: 110, llm: 210, tts: 95 },
+    spec: { net: 60, vad: 180, stt: 70, llm: 140, tts: 95 },
+    hosted: { net: 90, vad: 450, stt: 260, llm: 580, tts: 220 },
+    duplex: { net: 55, vad: 40, stt: 0, llm: 140, tts: 45 },
+  };
+  document.getElementById("v-preset").addEventListener("change", (e) => {
+    const p = PRESETS[e.target.value];
+    if (!p) return;
+    document.getElementById("v-net").value = p.net;
+    document.getElementById("v-vad").value = p.vad;
+    document.getElementById("v-stt").value = p.stt;
+    document.getElementById("v-llm").value = p.llm;
+    document.getElementById("v-tts").value = p.tts;
+    calcVoice();
+  });
+  function calcVoice() {
+    const vals = [
+      { id: "v-net", label: "Telephony / Jitter", color: "var(--muted)" },
+      { id: "v-vad", label: "VAD / Turn End", color: "var(--warn)" },
+      { id: "v-stt", label: "STT Finalize", color: "var(--accent-2)" },
+      { id: "v-llm", label: "LLM TTFT", color: "var(--accent)" },
+      { id: "v-tts", label: "TTS First Audio", color: "var(--ok)" },
+    ].map((x) => {
+      const v = +document.getElementById(x.id).value;
+      document.getElementById(x.id + "-l").textContent = String(v);
+      return Object.assign(x, { v });
+    });
+    const total = vals.reduce((a, x) => a + x.v, 0);
+    const maxStage = vals.reduce((a, b) => (b.v > a.v ? b : a));
+    const bar = document.getElementById("voice-bar");
+    bar.innerHTML = vals.filter((x) => x.v > 0).map((x) => `<div class="stack-seg" style="width:${(100 * x.v / Math.max(total, 1)).toFixed(1)}%;background:${x.color}" title="${x.label}: ${x.v} ms"></div>`).join("");
+    document.getElementById("voice-legend").innerHTML = vals.map((x) => `<span><i class="wb-swatch" style="background:${x.color}"></i>${x.label}: <b>${x.v} ms</b></span>`).join("");
+    const verdict = total <= 600 ? ["ok", "Snappy & natural"] : total <= 800 ? ["ok", "Within 800 ms target"] : total <= 1100 ? ["warn", "Noticeable pause"] : ["bad", "Feels broken on phone"];
+    document.getElementById("voice-kpis").innerHTML = `
+      <div class="wb-kpi ${verdict[0]}"><div class="k">Total Mouth-to-Ear</div><div class="v">${total} ms</div></div>
+      <div class="wb-kpi ${verdict[0]}"><div class="k">Caller Feel</div><div class="v" style="font-size:1.0rem">${verdict[1]}</div></div>
+      <div class="wb-kpi"><div class="k">Biggest Bottleneck</div><div class="v" style="font-size:1.0rem">${maxStage.label} (${Math.round(100 * maxStage.v / total)}%)</div></div>
+      <div class="wb-kpi"><div class="k">Budget vs. 800 ms</div><div class="v">${800 - total >= 0 ? "+" + (800 - total) + " ms left" : (total - 800) + " ms over"}</div></div>
+    `;
+    const tip = maxStage.id === "v-vad"
+      ? "VAD/endpointing is your bottleneck. Semantic turn detection + speculative LLM prefill (Deepgram Flux style) trims 100–200 ms at the cost of extra cheap prefill tokens."
+      : maxStage.id === "v-llm"
+      ? "LLM TTFT is your bottleneck. Co-locate vLLM on the same region/GPU, enable prefix caching + MTP speculative decoding, or route simple turns to Gemma 4 E2B/E4B."
+      : maxStage.id === "v-stt"
+      ? "STT finalization is eating the budget. Switch from batch Whisper to streaming Parakeet TDT 0.6B or Qwen3-ASR and emit partial hypotheses early."
+      : maxStage.id === "v-tts"
+      ? "TTS first audio is high. Stream tokens straight into Qwen3-TTS (~97 ms) or Chatterbox-Turbo (~75 ms) instead of waiting for full LLM sentences."
+      : "Network/jitter dominates. Move SIP media termination, STT, LLM, and TTS into the same cloud region to eliminate inter-service hops.";
+    document.getElementById("voice-note").innerHTML = `<div class="wb-alert ${verdict[0]}">${tip}</div>`;
+  }
+  ["v-net", "v-vad", "v-stt", "v-llm", "v-tts"].forEach((id) => document.getElementById(id).addEventListener("input", calcVoice));
+  calcVoice();
+
+  // ---- Local Experiment Log ----
+  const store = window.LabStore;
+  let runs = store.get("runs", []);
+  function drawRuns() {
+    const tb = document.getElementById("r-tbody");
+    if (!runs.length) {
+      tb.innerHTML = '<tr><td colspan="7" class="muted">No runs logged yet. Add your baseline Gemma 4 run from Phase 0 to start tracking progress.</td></tr>';
+      return;
+    }
+    tb.innerHTML = runs.map((r, i) => `<tr>
+      <td><code>${r.date}</code></td><td><b>${r.name}</b></td><td>${r.model}</td><td>${r.metric}</td><td>${r.gpu}</td><td>${r.notes}</td>
+      <td><button class="btn" type="button" data-del="${i}" style="padding:2px 8px">×</button></td>
+    </tr>`).join("");
+    tb.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => {
+      runs.splice(+b.dataset.del, 1);
+      store.set("runs", runs);
+      drawRuns();
+    }));
+  }
+  document.getElementById("r-add").addEventListener("click", () => {
+    const name = document.getElementById("r-name").value.trim();
+    if (!name) return;
+    runs.unshift({
+      date: new Date().toISOString().slice(0, 10),
+      name,
+      model: document.getElementById("r-model").value.trim() || "—",
+      metric: document.getElementById("r-metric").value.trim() || "—",
+      gpu: document.getElementById("r-gpu").value.trim() || "—",
+      notes: document.getElementById("r-notes").value.trim() || "—",
+    });
+    store.set("runs", runs);
+    ["r-name", "r-model", "r-metric", "r-gpu", "r-notes"].forEach((id) => (document.getElementById(id).value = ""));
+    drawRuns();
+  });
+  document.getElementById("r-export").addEventListener("click", () => {
+    const md = "| Date | Run | Model & Method | Eval / Latency | GPU & Cost | Notes |\n|---|---|---|---|---|---|\n" +
+      runs.map((r) => `| ${r.date} | ${r.name} | ${r.model} | ${r.metric} | ${r.gpu} | ${r.notes} |`).join("\n");
+    navigator.clipboard?.writeText(md);
+    const btn = document.getElementById("r-export");
+    btn.textContent = "Copied!";
+    setTimeout(() => (btn.textContent = "Copy Markdown"), 1400);
+  });
+  drawRuns();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="topic" content="{{TOPIC_ID}}">
+  <meta name="status" content="outline">
+  <title>{{TITLE}}</title>
+  <script>try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("gpu-lab:theme")) || "dark"; } catch (e) {}</script>
+  <link rel="stylesheet" href="../../../assets/style.css">
+  <script src="../../../assets/curriculum.js"></script>
+  <script src="../../../assets/viz.js"></script>
+  <script src="../../../assets/shell.js"></script>
+  <script src="../../../assets/book.js"></script>
+</head>
+<body data-root="../../.." data-section="{{SECTION_ID}}" data-page="concept">
+<main class="content book">
+
+<header class="chapter-head">
+  <div class="eyebrow">Subject {{SECTION_ID}} · {{SECTION_TITLE}}</div>
+  <h1>{{TITLE}}</h1>
+  <div class="meta"><span><span class="badge {{TAG}}">{{TAG}}</span> {{TOPIC_TEXT}}</span><span>about 15 minutes</span><span>6 quick checks</span></div>
+</header>
+
+<p>Why this exists from first principles, in two or three plain sentences — zero unintroduced jargon.</p>
+
+<div class="learn-list">
+  <h4>By the end you'll be able to</h4>
+  <ol>
+    <li>Plain-English physical mental model…</li>
+  </ol>
+</div>
+
+<h2 id="s1"><span class="sec-num">1</span>Why do we even need this?</h2>
+
+<div class="story">
+  <p>Concrete toy problem or real engineering pain with small numbers you can trace in your head.</p>
+</div>
+
+<div class="figure">
+  <pre class="diagram">Naive attempt (breaks)  vs.  First-principles fix</pre>
+  <div class="cap">What to notice in the before/after comparison.</div>
+</div>
+
+<h2 id="s2"><span class="sec-num">2</span>What's the simplest thing that could work?</h2>
+<p>Carry ONE running physical analogy through Question → Naive → Break → Fix before introducing any formal name or framework wrapper.</p>
+
+<div class="keyidea">One or two plain sentences summarizing the core mental model.</div>
+
+<div class="check" id="check-core">
+  <p class="q">Prediction or "what breaks if…" question?</p>
+  <div class="opts">
+    <button>A realistic mistake</button>
+    <button data-correct>The right prediction</button>
+    <button>Another realistic mistake</button>
+  </div>
+  <div class="fb right"><p>Why it holds.</p></div>
+  <div class="fb wrong"><p>The idea again from a second angle.</p></div>
+</div>
+
+<h2 id="s3"><span class="sec-num">3</span>How does this break in real systems?</h2>
+<p>Real gotchas (especially gaps in gemma.ai and voice pipelines) and when this is the wrong tool.</p>
+
+<h2 id="summary"><span class="sec-num">✓</span>What to remember</h2>
+<ol>
+  <li>…</li>
+</ol>
+
+<div class="review" id="review"></div>
+
+<h2 id="exercises"><span class="sec-num">✎</span>Toy build &amp; exercises</h2>
+<p class="muted">Complete the linked local CPU exercise or cloud GPU runbook before moving on.</p>
+
+<nav class="chapter-nav">
+  <a href="../index.html"><small>← Subject</small>{{SECTION_TITLE}}</a>
+  <a class="next" href="../../../index.html"><small>Back to →</small>Your spine</a>
+</nav>
+
+</main>
+<script>
+(function () {
+  // Interactive visuals using assets/viz.js.
+})();
+</script>
+</body>
+</html>

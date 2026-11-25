@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reference Cheatsheet · gpu/lab</title>
+  <script>try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("gpu-lab:theme")) || "dark"; } catch (e) {}</script>
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/curriculum.js"></script>
+  <script src="assets/shell.js"></script>
+</head>
+<body data-root="." data-page="cheatsheet">
+<main class="content book">
+  <header class="chapter-head">
+    <div class="eyebrow">Quick Lookup · Gemma 4, PyTorch, LoRA, Serving &amp; Voice Stack</div>
+    <h1>Applied Open-Models Reference Cheatsheet</h1>
+    <p class="lede">Exact model specs, the production gotchas missing from <code>gemma.ai</code>, starter hyperparameters, and the late-2026 open-source voice &amp; full-duplex landscape in one offline page.</p>
+  </header>
+
+  <h2 id="gemma4"><span class="sec-num">1</span>Gemma 4 Family Map (Apache 2.0)</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Model</th><th>Architecture</th><th>Modalities (In → Out)</th><th>Context</th><th>Infer BF16 / Q4</th><th>QLoRA / Full FT VRAM</th><th>Best Role</th></tr></thead>
+    <tbody>
+      <tr><td><b>Gemma 4 E2B</b></td><td>Edge · Per-Layer Embeddings (PLE)</td><td>Text + Image + Audio → <b>Text</b></td><td>128K</td><td>11.4 / 2.9 GB</td><td>~7 / ~32 GB</td><td>Fast router, edge ASR, cheap extraction</td></tr>
+      <tr><td><b>Gemma 4 E4B</b></td><td>Edge · Per-Layer Embeddings (PLE)</td><td>Text + Image + Audio → <b>Text</b></td><td>128K</td><td>17.9 / 4.5 GB</td><td>~9 / ~42 GB</td><td>Best single-L4 starter for text &amp; voice brain</td></tr>
+      <tr><td><b>Gemma 4 12B</b></td><td>Unified <b>Encoder-Free</b></td><td>Text + Image + Audio → <b>Text</b></td><td>256K</td><td>26.7 / 6.7 GB</td><td>~11 / ~80 GB</td><td>Sweet spot for Capstone 1 &amp; 2 quality/speed</td></tr>
+      <tr><td><b>Gemma 4 26B-A4B</b></td><td>MoE (128 experts, 4B active)</td><td>Text + Image → <b>Text</b></td><td>256K</td><td>57.7 / 14.4 GB</td><td>~21 / ~160 GB</td><td>High-throughput reasoning (4B compute, 26B RAM)</td></tr>
+      <tr><td><b>Gemma 4 31B</b></td><td>Dense</td><td>Text + Image → <b>Text</b></td><td>256K</td><td>69.9 / 17.5 GB</td><td>~22 / ~200 GB</td><td>Teacher model for synthetic distillation &amp; evals</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted small">Remember: Gemma 4 E2B/E4B/12B understand audio (16 kHz mono, ≤30 s, 25 audio soft tokens/sec) but <b>do not generate speech</b>. Pair them with an open TTS model to speak.</p>
+
+  <h2 id="gotchas"><span class="sec-num">2</span>Production Gotchas Missing from <code>gemma.ai</code></h2>
+  <ul>
+    <li><b>NF4 QLoRA degrades audio projections:</b> Use <code>bfloat16</code> LoRA (with gradient checkpointing) when fine-tuning Gemma 4 audio inputs, or selective quantization in Unsloth.</li>
+    <li><b>MoE routing drift on 26B-A4B:</b> Never unfreeze the router on small datasets (causes expert collapse), and prefer BF16 Split-LoRA over 4-bit NF4.</li>
+    <li><b>Silent loss-masking bugs:</b> Always mask system turns, user turns, pad tokens, and audio soft tokens (<code>{256000, 258881, 258883}</code>) to <code>-100</code> so the model only trains on assistant responses.</li>
+    <li><b><code>ClippableLinear</code> &amp; <code>use_cache</code> quirks:</b> Pin <code>transformers&gt;=5.10.1</code>, <code>trl&gt;=0.16.0</code>, <code>peft&gt;=0.19.0</code> and avoid DeepSpeed ZeRO-3 with LoRA adapters (can save zero-element tensors; use FSDP2 instead).</li>
+    <li><b>vLLM / SGLang silently ignoring adapters:</b> Merge LoRA weights (<code>merge_and_unload()</code>) and verify greedy outputs match your PEFT checkpoint 1-for-1 before serving at scale.</li>
+    <li><b>Use official QAT checkpoints for 4-bit serving:</b> <code>-qat-w4a16-ct</code> (vLLM/SGLang) and <code>-qat-q4_0-gguf</code> (llama.cpp), paired with <code>-assistant</code> MTP drafters for lossless speculative decoding.</li>
+  </ul>
+
+  <h2 id="lora"><span class="sec-num">3</span>Starter Fine-Tuning Hyperparameters (Single L4 24GB)</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Knob</th><th>Text SFT (QLoRA / LoRA)</th><th>Audio-IN SFT (BF16 LoRA)</th><th>DPO Preference Tuning</th></tr></thead>
+    <tbody>
+      <tr><td>Checkpoint</td><td><code>-it</code> (almost always)</td><td><code>E2B-it</code> / <code>E4B-it</code> / <code>12B-it</code></td><td>Your SFT-merged checkpoint</td></tr>
+      <tr><td>LoRA rank / alpha</td><td><code>r=16</code>, <code>alpha=32</code> (bump to 32/64 for deep shifts)</td><td><code>r=32</code>, <code>alpha=64</code>, exclude <code>audio_tower</code></td><td><code>r=16</code>, <code>alpha=32</code></td></tr>
+      <tr><td>Target modules</td><td><code>q,k,v,o,gate,up,down_proj</code></td><td>Language projections only (freeze audio tower first)</td><td><code>q,k,v,o,gate,up,down_proj</code></td></tr>
+      <tr><td>Learning rate</td><td><code>1e-4</code> to <code>2e-4</code> (cosine + 5% warmup)</td><td><code>1e-4</code> (cosine + 5% warmup)</td><td><code>5e-6</code> to <code>1e-5</code> (beta=0.1)</td></tr>
+      <tr><td>Epochs</td><td>1–3 (watch val loss, not train loss)</td><td>1–2</td><td>1</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="voice"><span class="sec-num">4</span>Open-Source Voice, Cloning &amp; Full-Duplex Landscape</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Layer</th><th>Top Open Models</th><th>License</th><th>Key Spec</th><th>When to Pick</th></tr></thead>
+    <tbody>
+      <tr><td><b>Streaming STT</b></td><td>NVIDIA Parakeet TDT 0.6B v2/v3 · Whisper Large v3 Turbo · Qwen3-ASR</td><td>CC-BY-4.0 / MIT / Apache 2.0</td><td>Parakeet fits beside an LLM on one 24 GB GPU</td><td>Production phone agents needing partial transcripts</td></tr>
+      <tr><td><b>Audio-IN LLM</b></td><td>Gemma 4 E2B / E4B / 12B</td><td>Apache 2.0</td><td>16 kHz mono ≤30 s; direct audio → JSON/intent</td><td>Domain jargon, custom accents, single-pass audio QA</td></tr>
+      <tr><td><b>Cloning TTS</b></td><td><b>Qwen3-TTS 0.6B/1.7B</b> · <b>Chatterbox-Turbo</b> · <b>Orpheus TTS</b></td><td>Apache 2.0 / MIT / Apache 2.0</td><td>~75–97 ms streaming TTFA; 3 s cloning; LoRA-tunable</td><td>Self-hosted ElevenLabs-class voice &amp; phone calls</td></tr>
+      <tr><td><b>Full-Duplex S2S</b></td><td>Kyutai Moshi 7B · NVIDIA PersonaPlex 7B · NemotronLabs VoiceChat 11B</td><td>CC-BY / NVIDIA Open / OpenMDW</td><td>Simultaneous listen+speak; VoiceChat adds tools</td><td>R&amp;D &amp; backchannel mastery (reasoning still lags cascades)</td></tr>
+      <tr><td><b>Orchestration</b></td><td><b>Pipecat</b> · <b>LiveKit Agents</b></td><td>BSD / Apache 2.0</td><td>WebRTC / SIP / Twilio Media Streams, VAD, barge-in</td><td>Wiring STT + vLLM Gemma 4 + cloned TTS onto phone lines</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="telephony"><span class="sec-num">5</span>Telephony Audio Cheat Numbers</h2>
+  <ul>
+    <li><b>PSTN phone line:</b> 8,000 Hz mono, G.711 μ-law (8-bit companded) — cuts off everything above 3.4 kHz. Always test your STT and cloned voice after an 8 kHz round-trip!</li>
+    <li><b>Gemma 4 &amp; most STT input:</b> 16,000 Hz mono float32 PCM.</li>
+    <li><b>Modern streaming TTS output:</b> 24,000 Hz mono PCM (downsample cleanly to 8 kHz before sending back over Twilio/SIP).</li>
+    <li><b>Latency rules of thumb:</b> Human reply gap ≈ 200 ms · Noticeable lag ≈ 800 ms · Target barge-in stop-and-flush ≤ 200 ms.</li>
+  </ul>
+</main>
+</body>
+</html>
