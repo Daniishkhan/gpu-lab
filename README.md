@@ -36,8 +36,6 @@ This repository is built for **Gemini** (Gemini CLI and Google Antigravity) usin
 | [`review-chapter`](.agents/skills/review-chapter/SKILL.md) | Adversarial 4-lens review (first-principles clarity, Python-verified math, production gotchas, QA) |
 | [`author-exercise`](.agents/skills/author-exercise/SKILL.md) | Author a zero-GPU pure-Python/NumPy exercise + adversarial `pytest` suite (verified out-of-repo) |
 | [`write-lab`](.agents/skills/write-lab/SKILL.md) | Write a reproducible cloud GPU lab runbook (`labs/*.md`) with VRAM/cost sizing and teardown checks |
-| [`teach`](.agents/skills/teach/SKILL.md) | Interactive Socratic first-principles tutoring and stage milestone quizzes |
-| [`coach`](.agents/skills/coach/SKILL.md) | Zero-spoiler progressive hint ladder and staff-engineer review for CPU exercises and GPU labs |
 
 ### Recommended Authoring Pipeline
 

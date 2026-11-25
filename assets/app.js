@@ -397,7 +397,7 @@
       barEl));
     (s.notes || []).forEach((n) => root.append(h("div", { class: "callout" }, n)));
     if (!writtenCh) root.append(h("div", { class: "callout" },
-      h("b", {}, "How to study this subject: "), "build the mental model via an interactive ", h("code", {}, "teach"), " session, solve the local CPU exercise, or expand any outline into a full visual chapter."));
+      h("b", {}, "How to study this subject: "), "build the mental model interactively with Gemini, solve the local CPU exercise, or expand any outline into a full visual chapter."));
 
     const tags = [...new Set(s.topics.map((t) => t.tag))];
     let filter = store.get("filter:" + id, "all");

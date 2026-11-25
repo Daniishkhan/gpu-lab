@@ -26,11 +26,11 @@ Assume **only basic Python fluency**. Never treat a framework call (`nn.Linear`,
 2. **One running physical anchor:** Carry one concrete physical or geometric analogy across the entire rebuild, and state explicitly **where the analogy breaks**.
 3. **Bottom-up derivation ladder:** `Concrete Pain → Naive Attempt → Break → Hand-Traced Toy Numbers (2–4 elements) → Visual Model → Plain English → Formal Name & Equation → Pure-Python/NumPy Build (≤15 lines) → 1-to-1 Bridge to Real Stack & Gotchas`.
 4. **Protect the core path:** Keep chapters to ~2,000–3,500 visible words, place the first visual in Section 1–2, leave at most 2 consecutive sections without a visual, and tuck heavy derivations or secondary variants into collapsed `details.aside.deeper`.
-5. **Test causal prediction, never trivia:** Quick checks and quizzes ask "what breaks if we double X while holding Y fixed?", never acronym memorization.
+5. **Test causal prediction, never trivia:** Quick checks and quizzes ask "what breaks if we double X while holding Y fixed?", never acronym memorization. When teaching or quizzing interactively, pace one step or question per turn and stay inside the topic's `curriculum.json` `requires`.
 
 ## Hard Rules (Never Violate)
 
-1. **Never write or commit exercise solutions** in the repo or in chat. Exercise stubs in `sections/*/exercises/*.py` must keep `NotImplementedError`. Verify test suites via `tools/check_exercise.py` using temporary files in a scratch directory *outside* the repo, then delete those scratch files.
+1. **Never write or commit exercise solutions** in the repo or in chat (including drop-in formulas). Exercise stubs in `sections/*/exercises/*.py` must keep `NotImplementedError`. When helping a learner debug an exercise, run `pytest` first and give one progressive hint per turn (hand-trace → units/shapes → missing term) rather than the answer. Verify test suites via `tools/check_exercise.py` using temporary files in a scratch directory *outside* the repo, then delete those scratch files.
 2. **Never add external web dependencies to HTML pages:** Zero CDNs, zero external fonts/scripts, zero `fetch()`. Every page must work completely offline over `file://` using `assets/style.css`, `assets/viz.js`, `assets/shell.js`, and `assets/book.js`.
 3. **Never hardcode colors in HTML/SVG/JS:** Use only CSS theme tokens (`var(--accent)`, `--accent-2`, `--brand`, `--ok`, `--warn`, `--bad`, `--surface`, `--surface-2`, `--border`, `--text`, `--text-strong`, `--muted`, `--on-accent`, `--*-soft`) so all four themes (Ayu Dark, Ayu Mirage, Gruvbox Dark Hard, Ayu Light) stay legible.
 4. **Never leak Markdown or unescaped special tokens into HTML:** Use `<code>...</code>` (never raw `` `backticks` ``), `<b>`/`<em>` (never `**bold**`), and escape angle-bracket tokens (`&lt;|turn&gt;`, `&lt;turn|&gt;`).
@@ -51,8 +51,6 @@ Activate the matching skill before starting work — keep procedural detail in s
 | Adversarially review an existing chapter for math, clarity, gotchas, and markup | `review-chapter` |
 | Author a new zero-GPU pure-Python/NumPy exercise + adversarial `pytest` suite | `author-exercise` |
 | Write or update a reproducible cloud GPU lab runbook (`labs/*.md`) | `write-lab` |
-| Teach a concept from first principles or run a milestone quiz interactively | `teach` |
-| Coach a learner through a failing CPU exercise or GPU lab bug (zero spoilers) | `coach` |
 
 ## Commands
 
