@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="topic" content="00.02">
+  <meta name="status" content="outline">
+  <title>Doing math in plain Python: formulas, stats &amp; 2D grids</title>
+  <script>try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("gpu-lab:theme")) || "dark"; } catch (e) {}</script>
+  <link rel="stylesheet" href="../../../assets/style.css">
+  <script src="../../../assets/curriculum.js"></script>
+  <script src="../../../assets/viz.js"></script>
+  <script src="../../../assets/shell.js"></script>
+  <script src="../../../assets/book.js"></script>
+</head>
+<body data-root="../../.." data-section="00" data-page="concept">
+<main class="content book">
+
+<header class="chapter-head">
+  <div class="eyebrow">Phase 0A · Subject 00 · Python Primer &amp; Math Fluency</div>
+  <h1>Doing math in plain Python: formulas, stats &amp; 2D grids</h1>
+  <div class="meta"><span><span class="kind k-outline">Outline</span> ready for zero-abstraction teach or full chapter</span><span><span class="badge P0">P0</span></span></div>
+</header>
+
+<p>Translating summation (<code>Σ</code>), mean, weighted average, min-max rescaling, variance, and <code>math.sqrt</code>/<code>exp</code>/<code>log</code> into 3–5 line Python functions, plus working cleanly with 2D lists-of-lists and lambdas.</p>
+
+<div class="outline-banner">
+  <div>
+    <b>Zero-abstraction blueprint ready.</b> Study this interactively via <code>teach</code> (starting from small toy numbers), or expand it into a full visual chapter.
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn primary" type="button" data-copy="teach me doing math in plain Python: formulas, stats & 2D grids from first principles with small toy numbers">Copy teach prompt</button>
+    <button class="btn" type="button" data-copy="write the full visual chapter for 00.02 (Doing math in plain Python: formulas, stats & 2D grids) following write-chapter, visuals-and-layout, and review-chapter">Copy write-chapter prompt</button>
+  </div>
+</div>
+
+<h2 id="s1"><span class="sec-num">1</span>Planned warm-up arc</h2>
+<ol>
+  <li><b>Math symbols are just tiny Python loops</b> — Translating <code>Σ</code>, averages, weighted averages, and <code>y = w * x + b</code> into 3-line functions tested on 4 tiny numbers.</li>
+  <li><b>Measuring spread &amp; rescaling numbers</b> — Computing mean, variance, standard deviation, and min-max scaling to <code>[0, 1]</code> by hand and in Python.</li>
+  <li><b>Working comfortably with 2D grids (lists of lists)</b> — Rows vs. columns, grabbing column <code>j</code>, summing across rows vs. down columns, and avoiding the <code>[[0] * cols] * rows</code> shared-row trap.</li>
+  <li><b>Standard math helpers &amp; small lambdas</b> — Using <code>math.sqrt</code>, <code>math.exp</code>, <code>math.log</code>, and passing helper functions (<code>key=lambda ...</code>) cleanly.</li>
+  <li><b>Hands-on exercise</b> — Solve <code>python_math_drills.py</code> locally with <code>pytest</code>.</li>
+</ol>
+
+<nav class="chapter-nav">
+  <a href="python-refresher-and-idioms.html"><small>← Previous</small>Python refresher &amp; everyday idioms</a>
+  <a class="next" href="classes-dunders-and-batches.html"><small>Next →</small>Classes, magic methods &amp; batched generators for ML</a>
+</nav>
+
+</main>
+<script>
+document.querySelectorAll("[data-copy]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const txt = btn.getAttribute("data-copy");
+    const done = () => { const o = btn.textContent; btn.textContent = "Copied"; setTimeout(() => (btn.textContent = o), 1400); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done);
+    else { const ta = document.createElement("textarea"); ta.value = txt; document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); done(); }
+  });
+});
+</script>
+</body>
+</html>

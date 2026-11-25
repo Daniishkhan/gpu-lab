@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="topic" content="01.02">
   <meta name="status" content="outline">
-  <title>Matrix multiplication & shapes for ML</title>
+  <title>Matrix multiplication &amp; tensor shapes</title>
   <script>try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("gpu-lab:theme")) || "dark"; } catch (e) {}</script>
   <link rel="stylesheet" href="../../../assets/style.css">
   <script src="../../../assets/curriculum.js"></script>
@@ -17,35 +17,35 @@
 <main class="content book">
 
 <header class="chapter-head">
-  <div class="eyebrow">Phase 0 · Subject 01 · Matrices, NumPy & GPU Hardware</div>
-  <h1>Matrix multiplication & shapes for ML</h1>
+  <div class="eyebrow">Phase 0B · Subject 01 · Vectors, Matrices, NumPy &amp; GPU Hardware</div>
+  <h1>Matrix multiplication &amp; tensor shapes</h1>
   <div class="meta"><span><span class="kind k-outline">Outline</span> ready for zero-abstraction teach or full chapter</span><span><span class="badge P0">P0</span></span></div>
 </header>
 
-<p>Why every neural layer is a matrix multiply (@), batching (B, T, D), broadcasting, transposes, and debugging tensor shapes without guessing.</p>
+<p>Why every neural layer is a matrix multiply (<code>@</code>), transposes, hand-tracing <code>(2, 3) @ (3, 2)</code>, and batched 3D tensors <code>(B, T, D)</code> without guessing shapes.</p>
 
 <div class="outline-banner">
   <div>
     <b>Zero-abstraction blueprint ready.</b> Study this interactively via <code>teach</code> (starting from small toy numbers and physical intuition), or expand it into a full visual chapter.
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button class="btn primary" type="button" data-copy="teach me matrix multiplication & shapes for ML from first principles with a small toy example">Copy teach prompt</button>
-    <button class="btn" type="button" data-copy="write the full visual chapter for 01.02 (Matrix multiplication & shapes for ML) following write-chapter, visuals-and-layout, and review-chapter">Copy write-chapter prompt</button>
+    <button class="btn primary" type="button" data-copy="teach me matrix multiplication & tensor shapes from first principles with a small toy example">Copy teach prompt</button>
+    <button class="btn" type="button" data-copy="write the full visual chapter for 01.02 (Matrix multiplication & tensor shapes) following write-chapter, visuals-and-layout, and review-chapter">Copy write-chapter prompt</button>
   </div>
 </div>
 
 <h2 id="s1"><span class="sec-num">1</span>Planned no-abstraction arc</h2>
 <ol>
-  <li><b>Why do we even need this?</b> — Concrete toy problem or real hardware/model failure with small numbers you can trace in your head + early visual.</li>
-  <li><b>One running physical analogy &amp; bottom-up rebuild</b> — <code>Question → Toy naive attempt → Break → Fix</code>, plain English before jargon or framework wrappers.</li>
-  <li><b>Interactive visualization</b> — Step-through or live playground built with <code>assets/viz.js</code>.</li>
-  <li><b>Pure Python / toy build first → real production stack</b> — Verify the mechanism locally with zero black boxes before mapping onto PyTorch, Gemma 4, vLLM, Qwen3-TTS, or Pipecat.</li>
-  <li><b>Production gotchas &amp; summary</b> — Real failure modes (closing <code>gemma.ai</code> and telephony gaps) + 5–8 prediction quick checks.</li>
+  <li><b>From one dot product to a grid of dot products</b> — Hand-tracing <code>(2, 3) @ (3, 2)</code> cell by cell so the inner-dimension rule sticks forever.</li>
+  <li><b>Transposes &amp; flipping rows into columns</b> — Why <code>A.T</code> swaps <code>(R, C)</code> into <code>(C, R)</code> and why matrix multiply order matters (<code>A @ B != B @ A</code>).</li>
+  <li><b>Batched 3D LLM tensors</b> — Extending <code>(T, D_in) @ (D_in, D_out)</code> to a batch of sequences <code>(B, T, D_in) @ (D_in, D_out) + bias</code>.</li>
+  <li><b>Plain Python → NumPy <code>@</code></b> — Comparing your pure-Python loops against 1-line NumPy matrix multiplication.</li>
+  <li><b>Exercises</b> — Solve <code>matmul_shapes.py</code> locally with <code>pytest</code>.</li>
 </ol>
 
 <nav class="chapter-nav">
-  <a href="../index.html"><small>← Subject</small>Matrices, NumPy & GPU Hardware</a>
-  <a class="next" href="../../../index.html"><small>Back to →</small>Your spine</a>
+  <a href="vectors-and-dot-products.html"><small>← Previous</small>Vectors, distance &amp; dot products (Python → NumPy)</a>
+  <a class="next" href="everyday-numpy-for-ml.html"><small>Next →</small>Everyday NumPy: slicing, axis, broadcasting &amp; masks</a>
 </nav>
 
 </main>

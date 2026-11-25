@@ -4,29 +4,92 @@ window.CURRICULUM = {
   "rule": "Every step builds strictly on steps before it (no-abstraction bottom-up order). tools/build.py fails the build if any prerequisite is out of order.",
   "stages": [
    {
-    "id": "p0",
-    "label": "Phase 0",
-    "code": "P0",
-    "title": "Python → Matrices → GPUs (Hardware & Math Bridge)",
-    "goal": "Assume only basic Python fluency (reusing swe-lab's Python track). Build physical intuition for vectors, dot products, matrix shapes, and why GPUs exist — before importing any ML framework.",
+    "id": "p0a",
+    "label": "Phase 0A",
+    "code": "0A",
+    "title": "Python Primer & Math Fluency (Warm-Up)",
+    "goal": "Ease back into writing Python by hand — zero ML jargon, zero low-level memory plumbing. Build muscle memory with everyday Python idioms (lists, dicts, slicing, zip, comprehensions), turning math formulas into clean functions, 2D grids, basic classes, and batch generators.",
+    "steps": [
+     {
+      "topic": "00.01",
+      "gpu": "CPU (local pytest)",
+      "do": "Warm up your Python hands: functions & defaults, lists/dicts/sets, slicing & copying (spotting the b = a aliasing bug), unpacking, zip, enumerate, sum/min/max, and list/dict comprehensions. Solve python_warmup.py."
+     },
+     {
+      "topic": "00.02",
+      "gpu": "CPU (local pytest)",
+      "do": "Turn everyday math notation into 3–5 line Python functions: summation, mean, weighted average, variance, min-max rescaling, math.sqrt/exp/log, small lambdas, and working comfortably with 2D lists-of-lists (rows vs. columns). Solve python_math_drills.py."
+     },
+     {
+      "topic": "00.03",
+      "gpu": "CPU (local pytest)",
+      "do": "Learn just enough next-level Python so ML code reads cleanly: small classes (__init__, self, __repr__, __len__, __getitem__), a gentle intro to __add__/__mul__/__call__, and yielding batches with yield. Solve python_classes_and_batches.py."
+     }
+    ],
+    "dayNote": "Two relaxed, hands-on sessions (~2 hours each) to get Python flowing naturally from your fingers before touching NumPy or ML.",
+    "days": [
+     {
+      "label": "Session 1 · Python refresher & math formulas in plain Python",
+      "plan": [
+       {
+        "t": "1h",
+        "topic": "00.01",
+        "do": "Drill slicing, aliasing, dicts, zip, enumerate, and comprehensions in python_warmup.py"
+       },
+       {
+        "t": "1h",
+        "topic": "00.02",
+        "do": "Translate averages, variance, rescaling & 2D grid sums into clean Python in python_math_drills.py"
+       }
+      ]
+     },
+     {
+      "label": "Session 2 · Practical classes, magic methods & batch generators",
+      "plan": [
+       {
+        "t": "1h 30m",
+        "topic": "00.03",
+        "do": "Build a small Vec2D class, a callable LinearScaler, and a batch_iter generator in python_classes_and_batches.py"
+       }
+      ]
+     }
+    ],
+    "milestone": {
+     "id": "m0a",
+     "title": "Milestone 0A · Comfortable writing math in Python",
+     "bar": "All 3 Python primer exercises pass; writing zip/comprehensions, 2D grids, small classes with __add__/__call__, and yield batch loops feels natural by hand.",
+     "ask": "quiz me on Phase 0A: Python slicing & aliasing, zip & comprehensions, turning math formulas into functions, basic classes (__add__, __call__), and yield batching"
+    }
+   },
+   {
+    "id": "p0b",
+    "label": "Phase 0B",
+    "code": "0B",
+    "title": "Vectors, Matrices, NumPy & GPU Hardware",
+    "goal": "Bridge directly from your plain-Python math loops to vectors, matrix shapes, everyday NumPy (slicing, axis, broadcasting, masks) — so NumPy feels obvious — and finish with GPU hardware physics.",
     "steps": [
      {
       "topic": "01.01",
       "gpu": "CPU (local pytest)",
-      "do": "Bridge from regular Python loops to vectors and dot products: why ML represents words, sounds, and weights as lists of numbers, and why one dot product measures alignment. Solve dot_product in matmul_shapes."
+      "do": "See why ML represents words, audio, and features as vectors: norms, Euclidean distance, dot products as alignment, and cosine similarity in plain Python first — then side-by-side with NumPy (u + v, u @ v). Solve vector_math.py."
      },
      {
       "topic": "01.02",
       "gpu": "CPU (local pytest)",
-      "do": "Master matrix multiplication (@), batched tensors (B, T, D), and broadcasting from 2×3 hand-traced examples. Finish matmul_shapes (2D matmul + batched linear layer) before switching to NumPy."
+      "do": "Hand-trace (2, 3) @ (3, 2) matrix multiplication, transposes, and batched 3D LLM shapes (B, T, D_in) @ (D_in, D_out) + bias in plain Python before switching to NumPy. Solve matmul_shapes.py."
      },
      {
       "topic": "01.03",
       "gpu": "CPU (local pytest)",
-      "do": "Read What Is a GPU and Why Do We Need One? (CPU chefs vs. 10,000 GPU cooks, FLOPs vs. memory bandwidth, VRAM vs. RAM, compute-bound prefill vs. bandwidth-bound decode) and solve gpu_roofline."
+      "do": "Build everyday NumPy fluency without low-level internals: .shape/.ndim, 2D row & column slicing, axis=0 vs. axis=1 reductions, intuitive broadcasting (X + bias, centering columns, avoiding (N,) + (N, 1) traps), and boolean/causal masking. Solve numpy_habits.py."
+     },
+     {
+      "topic": "01.04",
+      "gpu": "CPU (local pytest)",
+      "do": "Read What Is a GPU and Why Do We Need One? (CPU chefs vs. 10,000 GPU cooks, FLOPs vs. memory bandwidth, VRAM vs. RAM, arithmetic intensity, compute-bound prefill vs. bandwidth-bound decode) and solve gpu_roofline.py."
      }
     ],
-    "dayNote": "Three crisp sessions (~2–3 hours each). Pure Python/NumPy on your laptop — zero cloud GPU spend yet.",
+    "dayNote": "Three crisp sessions (~2 hours each). Pure Python/NumPy on your laptop — zero cloud GPU spend yet.",
     "days": [
      {
       "label": "Session 1 · Vectors, dot products & matrix shapes",
@@ -34,36 +97,46 @@ window.CURRICULUM = {
        {
         "t": "1h",
         "topic": "01.01",
-        "do": "Build intuition for vectors, alignment (dot product), and pure Python vs. NumPy vectorization"
+        "do": "Build vectors, norms, distance, dot products & cosine similarity in vector_math.py and compare against NumPy"
        },
        {
-        "t": "1h 30m",
+        "t": "1h 15m",
         "topic": "01.02",
-        "do": "Hand-trace 2×3 matrix multiplication and complete matmul_shapes.py (all pytest checks)"
+        "do": "Hand-trace 2×3 matmul & batched (B, T, D) projections in matmul_shapes.py"
        }
       ]
      },
      {
-      "label": "Session 2 · What is a GPU and why do we need one?",
+      "label": "Session 2 · Everyday NumPy: slicing, axis, broadcasting & masks",
+      "plan": [
+       {
+        "t": "1h 45m",
+        "topic": "01.03",
+        "do": "Practice 2D slicing, axis=0 vs. axis=1 reductions, bias broadcasting & boolean/causal masks in numpy_habits.py"
+       }
+      ]
+     },
+     {
+      "label": "Session 3 · What is a GPU and why do we need one?",
       "plan": [
        {
         "t": "1h",
-        "topic": "01.03",
+        "topic": "01.04",
         "do": "Read What Is a GPU and Why Do We Need One? and answer all 6 quick checks"
        },
        {
-        "t": "1h 30m",
-        "topic": "01.03",
+        "t": "1h",
+        "topic": "01.04",
         "do": "Complete gpu_roofline.py (FLOPs, bytes moved, arithmetic intensity, L4 vs. H100 ridge point)"
        }
       ]
      }
     ],
     "milestone": {
-     "id": "m0",
-     "title": "Milestone 0 · Matrix & GPU roofline fluency",
-     "bar": "You can trace (B, T, D_in) @ (D_in, D_out) shapes in your head and explain why prefill is compute-bound while decode is memory-bandwidth-bound.",
-     "ask": "quiz me on Phase 0: dot products, batched matrix shapes, CPU vs GPU parallelism, and arithmetic intensity"
+     "id": "m0b",
+     "title": "Milestone 0B · Matrix, NumPy & GPU roofline fluency",
+     "bar": "All 4 Phase 0B exercises pass; you can translate math loops into NumPy idioms, trace (B, T, D_in) @ (D_in, D_out) shapes in your head, and explain why prefill is compute-bound while decode is memory-bandwidth-bound.",
+     "ask": "quiz me on Phase 0B: dot products & cosine similarity, batched matrix shapes, NumPy axis & broadcasting, and GPU arithmetic intensity"
     }
    },
    {
@@ -431,55 +504,159 @@ window.CURRICULUM = {
  },
  "sections": [
   {
+   "id": "00",
+   "slug": "00-python-for-ml",
+   "title": "Python Primer & Math Fluency",
+   "notes": [
+    "Phase 0A: a friendly, hands-on Python warm-up before touching NumPy or ML. Rebuild hand-fluency with everyday Python idioms (slicing, dicts, zip, comprehensions), turning math formulas into clean functions, 2D grids, basic classes, and batch generators."
+   ],
+   "topics": [
+    {
+     "id": "00.01",
+     "tag": "P0",
+     "short": "Python refresher & everyday idioms",
+     "text": "Functions & defaults, lists/tuples/dicts/sets, slicing & copying (avoiding the b = a aliasing trap), unpacking, zip, enumerate, sum/min/max, and list/dict comprehensions.",
+     "requires": []
+    },
+    {
+     "id": "00.02",
+     "tag": "P0",
+     "short": "Doing math in plain Python: formulas, stats & 2D grids",
+     "text": "Translating summation (Σ), mean, weighted average, min-max rescaling, variance, and math.sqrt/exp/log into 3–5 line Python functions, plus working cleanly with 2D lists-of-lists and lambdas.",
+     "requires": [
+      "00.01"
+     ]
+    },
+    {
+     "id": "00.03",
+     "tag": "P0",
+     "short": "Classes, magic methods & batched generators for ML",
+     "text": "Writing small Python classes (__init__, self, __repr__, __len__, __getitem__), a gentle intro to __add__/__mul__/__call__ (so autograd & PyTorch nn.Module read naturally), and yielding batches with yield.",
+     "requires": [
+      "00.01",
+      "00.02"
+     ]
+    }
+   ],
+   "concepts": [
+    {
+     "file": "classes-dunders-and-batches.html",
+     "topic": "00.03",
+     "title": "Classes, magic methods & batched generators for ML",
+     "status": "outline"
+    },
+    {
+     "file": "math-in-plain-python.html",
+     "topic": "00.02",
+     "title": "Doing math in plain Python: formulas, stats & 2D grids",
+     "status": "outline"
+    },
+    {
+     "file": "python-refresher-and-idioms.html",
+     "topic": "00.01",
+     "title": "Python refresher & everyday idioms",
+     "status": "outline"
+    }
+   ],
+   "exercises": [
+    {
+     "file": "python_classes_and_batches.py",
+     "module": "python_classes_and_batches",
+     "title": "Practical Python classes, magic methods & batch generators for ML.",
+     "topics": [
+      "00.03"
+     ],
+     "result": null
+    },
+    {
+     "file": "python_math_drills.py",
+     "module": "python_math_drills",
+     "title": "Doing everyday math in plain Python: formulas, stats & 2D grids.",
+     "topics": [
+      "00.02"
+     ],
+     "result": null
+    },
+    {
+     "file": "python_warmup.py",
+     "module": "python_warmup",
+     "title": "Python refresher & everyday idioms for ML scripts.",
+     "topics": [
+      "00.01"
+     ],
+     "result": null
+    }
+   ]
+  },
+  {
    "id": "01",
    "slug": "01-matrices-and-gpus",
-   "title": "Matrices, NumPy & GPU Hardware",
+   "title": "Vectors, Matrices, NumPy & GPU Hardware",
    "notes": [
-    "Phase 0: assumes only basic Python fluency (use swe-lab for core Python). Builds exact physical intuition for dot products, batched matrix shapes, and GPU compute vs. memory bandwidth."
+    "Phase 0B: turn your plain-Python math functions directly into vectors, matrix shapes, everyday NumPy (slicing, axis, broadcasting, masks) — so NumPy feels obvious — and finish with GPU hardware physics."
    ],
    "topics": [
     {
      "id": "01.01",
      "tag": "P0",
-     "short": "From Python loops to vectors & dot products",
-     "text": "Why ML encodes words, sounds, and weights as vectors, why dot products measure alignment, and replacing Python loops with NumPy vectorization.",
-     "requires": []
+     "short": "Vectors, distance & dot products (Python → NumPy)",
+     "text": "Why ML encodes words, sounds, and features as vectors: L1/L2 norms, Euclidean distance, dot products as alignment, and cosine similarity in plain Python first — then side-by-side with NumPy.",
+     "requires": [
+      "00.02"
+     ]
     },
     {
      "id": "01.02",
      "tag": "P0",
-     "short": "Matrix multiplication & shapes for ML",
-     "text": "Why every neural layer is a matrix multiply (@), batching (B, T, D), broadcasting, transposes, and debugging tensor shapes without guessing.",
+     "short": "Matrix multiplication & tensor shapes",
+     "text": "Why every neural layer is a matrix multiply (@), transposes, hand-tracing (2, 3) @ (3, 2), and batched 3D tensors (B, T, D) without guessing shapes.",
      "requires": [
+      "00.02",
       "01.01"
      ]
     },
     {
      "id": "01.03",
      "tag": "P0",
+     "short": "Everyday NumPy: slicing, axis, broadcasting & masks",
+     "text": "Practical NumPy fluency: .shape/.ndim, 2D row/col slicing, axis=0 vs. axis=1 reductions, intuitive broadcasting (X + bias, centering columns, spotting silent shape traps), and boolean/causal masks.",
+     "requires": [
+      "01.02"
+     ]
+    },
+    {
+     "id": "01.04",
+     "tag": "P0",
      "short": "What is a GPU and why do we need one?",
      "text": "CPU vs. GPU parallelism, FLOPs vs. memory bandwidth, VRAM vs. system RAM, arithmetic intensity, and why prefill loves GPUs while decode starves them.",
      "requires": [
-      "01.02"
+      "01.02",
+      "01.03"
      ]
     }
    ],
    "concepts": [
     {
+     "file": "everyday-numpy-for-ml.html",
+     "topic": "01.03",
+     "title": "Everyday NumPy: slicing, axis, broadcasting & masks",
+     "status": "outline"
+    },
+    {
      "file": "matrix-multiply-and-shapes.html",
      "topic": "01.02",
-     "title": "Matrix multiplication & shapes for ML",
+     "title": "Matrix multiplication & tensor shapes",
      "status": "outline"
     },
     {
      "file": "vectors-and-dot-products.html",
      "topic": "01.01",
-     "title": "From Python loops to vectors & dot products",
+     "title": "Vectors, distance & dot products (Python → NumPy)",
      "status": "outline"
     },
     {
      "file": "what-is-a-gpu.html",
-     "topic": "01.03",
+     "topic": "01.04",
      "title": "What Is a GPU and Why Do We Need One?",
      "status": "complete"
     }
@@ -490,7 +667,7 @@ window.CURRICULUM = {
      "module": "gpu_roofline",
      "title": "GPU roofline math: FLOPs, VRAM bandwidth, arithmetic intensity & decode speed.",
      "topics": [
-      "01.03"
+      "01.04"
      ],
      "result": null
     },
@@ -499,8 +676,25 @@ window.CURRICULUM = {
      "module": "matmul_shapes",
      "title": "Vectors, matrix multiplication & batched linear layers from scratch.",
      "topics": [
-      "01.01",
       "01.02"
+     ],
+     "result": null
+    },
+    {
+     "file": "numpy_habits.py",
+     "module": "numpy_habits",
+     "title": "Everyday NumPy habits in plain Python: slicing, axis, broadcasting & masks.",
+     "topics": [
+      "01.03"
+     ],
+     "result": null
+    },
+    {
+     "file": "vector_math.py",
+     "module": "vector_math",
+     "title": "Vectors, distance, dot products & cosine similarity in plain Python.",
+     "topics": [
+      "01.01"
      ],
      "result": null
     }
@@ -520,6 +714,7 @@ window.CURRICULUM = {
      "short": "Guess, measure wrongness, nudge downhill",
      "text": "Fitting y = w*x + b to 4 points: loss functions, numerical & analytic slopes (gradients), learning rate stability, and gradient descent.",
      "requires": [
+      "00.02",
       "01.01"
      ]
     },
@@ -529,6 +724,7 @@ window.CURRICULUM = {
      "short": "Backpropagation from scratch (micro-autograd)",
      "text": "The chain rule as local blame assignment through a computation graph — building a 40-line scalar Value autograd engine in pure Python.",
      "requires": [
+      "00.03",
       "02.01"
      ]
     },
@@ -549,6 +745,7 @@ window.CURRICULUM = {
      "text": "Mapping every line of your pure-Python engine onto torch.Tensor, .backward(), nn.Module, AdamW, .to('cuda'), and Hugging Face AutoTokenizer / AutoModel.",
      "requires": [
       "01.03",
+      "01.04",
       "02.03"
      ]
     }
@@ -606,6 +803,7 @@ window.CURRICULUM = {
      "short": "From characters to tokens & embeddings",
      "text": "Building Byte-Pair Encoding (BPE) from scratch, vocab size vs. sequence length trade-offs, and embedding lookup tables.",
      "requires": [
+      "00.01",
       "01.02",
       "02.03"
      ]
@@ -616,7 +814,9 @@ window.CURRICULUM = {
      "short": "The problem Attention solves: Q, K, V & RoPE",
      "text": "Why averaging words loses order, inventing Query/Key/Value soft search-and-blend, causal masking, multi-head attention, and RoPE positional rotation.",
      "requires": [
+      "01.01",
       "01.02",
+      "01.03",
       "03.01",
       "02.03"
      ]
@@ -637,7 +837,7 @@ window.CURRICULUM = {
      "short": "Inside Gemma 4's four architectures",
      "text": "Mapping your toy GPT onto Gemma 4: GQA, PLE (E2B/E4B), unified encoder-free 12B, 128-expert MoE (26B-A4B), dense 31B, MTP drafters, and base vs. -it.",
      "requires": [
-      "01.03",
+      "01.04",
       "03.03"
      ]
     }
@@ -684,7 +884,7 @@ window.CURRICULUM = {
      "short": "Where does all the GPU memory go?",
      "text": "Exact byte accounting for weights, gradients, AdamW vs. 8-bit optimizer states, activations (gradient checkpointing), KV cache, and Gemma 4 PLE/MoE quirks.",
      "requires": [
-      "01.03",
+      "01.04",
       "03.04"
      ]
     },
@@ -714,6 +914,7 @@ window.CURRICULUM = {
      "short": "Chat templates & -100 completion-only loss masking",
      "text": "Gemma 4 turn markers (<|turn>user, <|turn>model, <turn|>, thinking channel), masking prompt/pad/audio tokens to -100, and preventing train-serve drift.",
      "requires": [
+      "01.03",
       "02.03",
       "03.01",
       "04.03"
@@ -853,7 +1054,7 @@ window.CURRICULUM = {
      "short": "Bits & quantization from scratch (BF16 → FP8 → 4-bit QAT)",
      "text": "Implementing 4-bit block quantization, measuring rounding error, why Gemma 4's official QAT checkpoints beat PTQ, and why NF4 hurts audio & MoE routing.",
      "requires": [
-      "01.03",
+      "01.04",
       "04.01",
       "04.05"
      ]
@@ -864,7 +1065,7 @@ window.CURRICULUM = {
      "short": "Prefill vs. decode & rebuilding the KV cache from scratch",
      "text": "Adding a KV cache to your toy Transformer (O(N²) → O(N)), and tying decode tokens/sec straight back to GPU memory bandwidth.",
      "requires": [
-      "01.03",
+      "01.04",
       "03.02",
       "03.03",
       "04.01"
@@ -940,7 +1141,8 @@ window.CURRICULUM = {
      "text": "PCM sample rates (8 kHz μ-law PSTN vs. 16/24 kHz), Nyquist limit, FFT, log-mel spectrograms from scratch, and simulating phone-line degradation.",
      "requires": [
       "01.01",
-      "01.02"
+      "01.02",
+      "01.03"
      ]
     },
     {
@@ -1261,5 +1463,5 @@ window.CURRICULUM = {
    "exercises": []
   }
  ],
- "generated": "2026-11-25 18:38"
+ "generated": "2026-11-25 19:48"
 };

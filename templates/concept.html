@@ -31,6 +31,8 @@
   </ol>
 </div>
 
+<p class="muted small">How to read this: top to bottom, answering every quick check before moving on.</p>
+
 <h2 id="s1"><span class="sec-num">1</span>Why do we even need this?</h2>
 
 <div class="story">
@@ -38,28 +40,35 @@
 </div>
 
 <div class="figure">
-  <pre class="diagram">Naive attempt (breaks)  vs.  First-principles fix</pre>
+  <pre class="diagram"><code>Naive attempt (breaks)  vs.  First-principles fix</code></pre>
   <div class="cap">What to notice in the before/after comparison.</div>
 </div>
 
 <h2 id="s2"><span class="sec-num">2</span>What's the simplest thing that could work?</h2>
-<p>Carry ONE running physical analogy through Question → Naive → Break → Fix before introducing any formal name or framework wrapper.</p>
+<p>Carry ONE running physical analogy through Question → Naive → Break → Hand-Traced Toy Numbers → Visual → Formal Name before introducing any framework wrapper.</p>
 
-<div class="keyidea">One or two plain sentences summarizing the core mental model.</div>
+<div class="callout warn"><b>Where this analogy breaks:</b> Name the exact point where the physical anchor diverges from silicon or math.</div>
+
+<div class="keyidea"><b>Core law:</b> One or two plain sentences summarizing the core mental model.</div>
 
 <div class="check" id="check-core">
   <p class="q">Prediction or "what breaks if…" question?</p>
   <div class="opts">
-    <button>A realistic mistake</button>
-    <button data-correct>The right prediction</button>
-    <button>Another realistic mistake</button>
+    <button>A realistic misconception</button>
+    <button data-correct>The right causal prediction</button>
+    <button>Another realistic misconception</button>
   </div>
-  <div class="fb right"><p>Why it holds.</p></div>
-  <div class="fb wrong"><p>The idea again from a second angle.</p></div>
+  <div class="fb right"><p>Why the mechanism produces this result.</p></div>
+  <div class="fb wrong"><p>The same idea re-explained from a second angle.</p></div>
 </div>
 
 <h2 id="s3"><span class="sec-num">3</span>How does this break in real systems?</h2>
-<p>Real gotchas (especially gaps in gemma.ai and voice pipelines) and when this is the wrong tool.</p>
+<p>1-to-1 bridge onto the real production stack, concrete gotchas missing from vendor docs, and when this is the wrong tool.</p>
+
+<details class="aside deeper">
+  <summary>Go deeper: Secondary derivation or edge case</summary>
+  <p>Heavy math or optional details stay collapsed so the first-pass core path stays crisp.</p>
+</details>
 
 <h2 id="summary"><span class="sec-num">✓</span>What to remember</h2>
 <ol>
@@ -68,8 +77,13 @@
 
 <div class="review" id="review"></div>
 
-<h2 id="exercises"><span class="sec-num">✎</span>Toy build &amp; exercises</h2>
-<p class="muted">Complete the linked local CPU exercise or cloud GPU runbook before moving on.</p>
+<h2 id="exercises"><span class="sec-num">✎</span>Exercises</h2>
+
+<div class="exercise">
+  <div class="tier core">Core · local CPU code (pytest)</div>
+  <h4>Verify the invariant locally</h4>
+  <p>Complete the linked local CPU exercise or cloud GPU runbook before moving on.</p>
+</div>
 
 <nav class="chapter-nav">
   <a href="../index.html"><small>← Subject</small>{{SECTION_TITLE}}</a>
@@ -79,7 +93,7 @@
 </main>
 <script>
 (function () {
-  // Interactive visuals using assets/viz.js.
+  // Interactive visuals using assets/viz.js (window.V).
 })();
 </script>
 </body>

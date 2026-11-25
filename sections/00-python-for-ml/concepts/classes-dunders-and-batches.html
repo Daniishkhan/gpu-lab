@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="topic" content="00.03">
+  <meta name="status" content="outline">
+  <title>Classes, magic methods &amp; batched generators for ML</title>
+  <script>try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("gpu-lab:theme")) || "dark"; } catch (e) {}</script>
+  <link rel="stylesheet" href="../../../assets/style.css">
+  <script src="../../../assets/curriculum.js"></script>
+  <script src="../../../assets/viz.js"></script>
+  <script src="../../../assets/shell.js"></script>
+  <script src="../../../assets/book.js"></script>
+</head>
+<body data-root="../../.." data-section="00" data-page="concept">
+<main class="content book">
+
+<header class="chapter-head">
+  <div class="eyebrow">Phase 0A · Subject 00 · Python Primer &amp; Math Fluency</div>
+  <h1>Classes, magic methods &amp; batched generators for ML</h1>
+  <div class="meta"><span><span class="kind k-outline">Outline</span> ready for zero-abstraction teach or full chapter</span><span><span class="badge P0">P0</span></span></div>
+</header>
+
+<p>Writing small Python classes (<code>__init__</code>, <code>self</code>, <code>__repr__</code>, <code>__len__</code>, <code>__getitem__</code>), a gentle intro to <code>__add__</code>/<code>__mul__</code>/<code>__call__</code> (so autograd &amp; PyTorch <code>nn.Module</code> read naturally), and yielding batches with <code>yield</code>.</p>
+
+<div class="outline-banner">
+  <div>
+    <b>Zero-abstraction blueprint ready.</b> Study this interactively via <code>teach</code> (starting from small toy examples), or expand it into a full visual chapter.
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn primary" type="button" data-copy="teach me classes, magic methods & batched generators for ML from first principles with a small toy example">Copy teach prompt</button>
+    <button class="btn" type="button" data-copy="write the full visual chapter for 00.03 (Classes, magic methods & batched generators for ML) following write-chapter, visuals-and-layout, and review-chapter">Copy write-chapter prompt</button>
+  </div>
+</div>
+
+<h2 id="s1"><span class="sec-num">1</span>Planned warm-up arc</h2>
+<ol>
+  <li><b>Why ML libraries use small classes everywhere</b> — Bundling numbers + behavior cleanly with <code>__init__</code>, <code>self</code>, and readable <code>__repr__</code>.</li>
+  <li><b>How Python makes <code>a + b</code> and <code>model(x)</code> work on your own objects</b> — A gentle 20-line walkthrough of <code>__add__</code>, <code>__mul__</code>, and <code>__call__</code> (direct preview of Stage 1's <code>Value</code> and PyTorch's <code>nn.Module</code>).</li>
+  <li><b>Indexing custom objects</b> — Adding <code>__len__</code> and <code>__getitem__</code> so a tiny dataset class works with <code>len(ds)</code> and <code>ds[0]</code>.</li>
+  <li><b>Looping in batches with <code>yield</code></b> — Writing a 6-line <code>batch_iter(items, batch_size)</code> generator so data batching feels effortless.</li>
+  <li><b>Hands-on exercise</b> — Solve <code>python_classes_and_batches.py</code> locally with <code>pytest</code>.</li>
+</ol>
+
+<nav class="chapter-nav">
+  <a href="math-in-plain-python.html"><small>← Previous</small>Doing math in plain Python: formulas, stats &amp; 2D grids</a>
+  <a class="next" href="../../01-matrices-and-gpus/concepts/vectors-and-dot-products.html"><small>Phase 0B →</small>Vectors, distance &amp; dot products (Python → NumPy)</a>
+</nav>
+
+</main>
+<script>
+document.querySelectorAll("[data-copy]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const txt = btn.getAttribute("data-copy");
+    const done = () => { const o = btn.textContent; btn.textContent = "Copied"; setTimeout(() => (btn.textContent = o), 1400); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done);
+    else { const ta = document.createElement("textarea"); ta.value = txt; document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); done(); }
+  });
+});
+</script>
+</body>
+</html>

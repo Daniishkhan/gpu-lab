@@ -1,6 +1,6 @@
 """GPU roofline math: FLOPs, VRAM bandwidth, arithmetic intensity & decode speed.
 
-Topic: 01.03
+Topic: 01.04
 
 Every GPU has two speed walls:
   1. Peak compute (TFLOPS = 10^12 FLOPs/sec)

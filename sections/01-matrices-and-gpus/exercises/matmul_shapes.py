@@ -1,6 +1,6 @@
 """Vectors, matrix multiplication & batched linear layers from scratch.
 
-Topic: 01.01, 01.02
+Topic: 01.02
 
 Every layer inside a Transformer (and Gemma 4) is built from one operation:
 multiplying a batch of token vectors by a weight matrix. Build it once in pure

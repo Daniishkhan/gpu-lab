@@ -1,5 +1,5 @@
 /* ==========================================================================
-   swe-prep shared styles
+   gpu/lab shared styles
 
    Four themes, picked in the Appearance panel (Aa in the top bar) or cycled with t:
      <html data-theme="dark">     Ayu Dark (default)
@@ -858,8 +858,6 @@ details.aside.another > summary { color: var(--accent-2); }
 .chapter-nav a small { display: block; color: var(--muted); font-size: 0.76rem; font-weight: 500; margin-bottom: 2px; }
 .chapter-nav a.next { text-align: right; grid-column: 2; }
 
-.sort-table td:nth-child(2), .sort-table td:nth-child(3) { white-space: nowrap; }
-
 .step-meta { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin-top: 8px; }
 .ex-chip {
   display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 6px;
@@ -902,28 +900,6 @@ details.aside.another > summary { color: var(--accent-2); }
 .lane-systems .bar > span { background: var(--accent-2); }
 .lane-filters { flex-wrap: wrap; }
 
-/* ---------- Practice hub & bare editor ---------- */
-.hub-tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; margin: 18px 0 22px; flex-wrap: wrap; }
-.hub-tabs button { border: 0; background: none; color: var(--muted); font: 600 0.86rem var(--ui); padding: 8px 14px; border-radius: 7px; cursor: pointer; }
-.hub-tabs button:hover { color: var(--text-strong); }
-.hub-tabs button[aria-selected="true"] { background: var(--surface-3); color: var(--text-strong); }
-.timer-bar { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; padding: 16px 20px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); margin-bottom: 14px; }
-.timer-clock { font: 700 2rem/1 var(--mono); color: var(--text-strong); font-variant-numeric: tabular-nums; }
-.timer-clock.warn { color: var(--warn); }
-.bare-wrap { display: grid; grid-template-columns: 44px minmax(0, 1fr); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-2); }
-.bare-gutter { padding: 14px 8px 14px 4px; text-align: right; font: 0.84rem/1.6 var(--mono); color: var(--faint); background: var(--surface); border-right: 1px solid var(--border); user-select: none; white-space: pre; overflow: hidden; }
-.bare-editor { width: 100%; min-height: 360px; padding: 14px 16px; border: 0; outline: 0; resize: vertical; background: transparent; color: var(--text-strong); font: 0.86rem/1.6 var(--mono); tab-size: 4; }
-.bare-foot { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-top: 10px; font-size: 0.82rem; color: var(--muted); }
-.hub-form { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); padding: 16px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); margin-bottom: 16px; }
-.hub-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; color: var(--muted); }
-.hub-form input, .hub-form select, .hub-form textarea { font: 0.88rem var(--ui); padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--bg-2); color: var(--text-strong); }
-.hub-form .span-all { grid-column: 1 / -1; }
-.star-tags { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 4px; }
-.star-tags label { flex-direction: row; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--text); cursor: pointer; }
-.cov-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-.cov-pill { font: 600 0.74rem/1 var(--mono); padding: 6px 10px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); }
-.cov-pill.ok { border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: var(--ok-soft); color: var(--ok); }
-.cov-pill.miss { border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: var(--warn-soft); color: var(--warn); }
 .outline-banner { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between; padding: 14px 18px; border-radius: var(--radius-lg); border: 1px dashed var(--border-strong); background: var(--surface); margin: 20px 0 28px; }
 
 /* Code colors. Filled in by shell.js, which tags Python tokens. */

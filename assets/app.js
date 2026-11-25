@@ -132,7 +132,7 @@
   }
 
   function laneOf(st) {
-    if (["p0", "s1"].includes(st.id)) return "foundations";
+    if (["p0a", "p0b", "s1"].includes(st.id)) return "foundations";
     if (["s2", "s3", "s4"].includes(st.id)) return "text";
     if (["s5", "s6"].includes(st.id)) return "voice";
     if (st.parallel) return "journal";
@@ -187,7 +187,7 @@
     root.append(top);
 
     const LANE_CARDS = [
-      { key: "foundations", eyebrow: "Phase 0 & Stage 1", title: "Matrices, GPUs & Learning", sub: "Dot products, @ shapes, GPU hardware, backprop from scratch → PyTorch", ids: ["p0", "s1"], cls: "lane-p0" },
+      { key: "foundations", eyebrow: "Phase 0A–0B & Stage 1", title: "Python Primer, NumPy, GPUs & Learning", sub: "Python warm-up, math formulas, classes/batches, vectors, @ shapes, everyday NumPy, GPU roofline & backprop", ids: ["p0a", "p0b", "s1"], cls: "lane-p0" },
       { key: "text", eyebrow: "Stages 2–4 · Capstone 1", title: "Transformers & Gemma 4 FT", sub: "120-line toy GPT → Gemma 4, VRAM, LoRA, -100 mask, SFT/RL, QAT & vLLM", ids: ["s2", "s3", "s4"], cls: "lane-coding" },
       { key: "voice", eyebrow: "Stages 5–6 · Capstone 2", title: "Sound, Voice Cloning & Calls", sub: "Waveforms/8 kHz, RVQ codecs, Qwen3-TTS/Chatterbox, barge-in & SIP calls", ids: ["s5", "s6"], cls: "lane-systems" },
       { key: "frontier", eyebrow: "Stage 7 · Frontier & Prod", title: "Full-Duplex S2S & MLOps", sub: "Moshi/PersonaPlex/VoiceChat vs. cascade, observability, FSDP2 & cost", ids: ["s7"], cls: "lane-beh" },
@@ -441,7 +441,7 @@
     if (s.exercises.length) {
       root.append(h("div", { class: "section-head" }, h("h2", { id: "exercises" }, "CPU Exercises"), h("span", { class: "aside-note" }, `${s.exercises.length} stubs with tests`)),
         h("p", { class: "muted" }, "Run these locally without a GPU. Stubs raise NotImplementedError until you implement them:"),
-        h("pre", { class: "plain" }, h("code", {}, `python3 -m pytest sections/${s.slug}/exercises   # whole subject\nmake one K=matmul_shapes                        # one exercise\nmake progress                                   # run all + update badges`)),
+        h("pre", { class: "plain" }, h("code", {}, `python3 -m pytest sections/${s.slug}/exercises   # whole subject\nmake one K=${s.exercises[0].module}            # one exercise\nmake progress                                   # run all + update badges`)),
         h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Module"), h("th", {}, "Exercise"), h("th", {}, "Status"), h("th", {}, "Run"))),
           h("tbody", {}, s.exercises.map((e) => h("tr", {},
             h("td", {}, h("a", { href: `exercises/${e.file}` }, h("code", {}, e.file))),

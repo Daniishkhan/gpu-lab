@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="topic" content="01.03">
+  <meta name="status" content="outline">
+  <title>Everyday NumPy: slicing, axis, broadcasting &amp; masks</title>
+  <script>try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("gpu-lab:theme")) || "dark"; } catch (e) {}</script>
+  <link rel="stylesheet" href="../../../assets/style.css">
+  <script src="../../../assets/curriculum.js"></script>
+  <script src="../../../assets/viz.js"></script>
+  <script src="../../../assets/shell.js"></script>
+  <script src="../../../assets/book.js"></script>
+</head>
+<body data-root="../../.." data-section="01" data-page="concept">
+<main class="content book">
+
+<header class="chapter-head">
+  <div class="eyebrow">Phase 0B · Subject 01 · Vectors, Matrices, NumPy &amp; GPU Hardware</div>
+  <h1>Everyday NumPy: slicing, axis, broadcasting &amp; masks</h1>
+  <div class="meta"><span><span class="kind k-outline">Outline</span> ready for zero-abstraction teach or full chapter</span><span><span class="badge P0">P0</span></span></div>
+</header>
+
+<p>Practical NumPy fluency: <code>.shape</code>/<code>.ndim</code>, 2D row/col slicing, <code>axis=0</code> vs. <code>axis=1</code> reductions, intuitive broadcasting (<code>X + bias</code>, centering columns, spotting silent shape traps), and boolean/causal masks.</p>
+
+<div class="outline-banner">
+  <div>
+    <b>Zero-abstraction blueprint ready.</b> Study this interactively via <code>teach</code> (starting from small 2×3 toy examples), or expand it into a full visual chapter.
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn primary" type="button" data-copy="teach me everyday NumPy: slicing, axis, broadcasting & masks from first principles with a small 2x3 toy example">Copy teach prompt</button>
+    <button class="btn" type="button" data-copy="write the full visual chapter for 01.03 (Everyday NumPy: slicing, axis, broadcasting & masks) following write-chapter, visuals-and-layout, and review-chapter">Copy write-chapter prompt</button>
+  </div>
+</div>
+
+<h2 id="s1"><span class="sec-num">1</span>Planned no-abstraction arc</h2>
+<ol>
+  <li><b>Reading 2D arrays like a spreadsheet</b> — Creating arrays, inspecting <code>.shape</code> and <code>.ndim</code>, and grabbing rows (<code>M[0, :]</code>) vs. columns (<code>M[:, 1]</code>) vs. sub-blocks.</li>
+  <li><b>Never guess <code>axis=0</code> vs. <code>axis=1</code> again</b> — Visual rule for collapsing down columns (<code>axis=0</code>) vs. across rows (<code>axis=1</code> / <code>axis=-1</code>) with <code>sum</code>, <code>mean</code>, and <code>max</code>.</li>
+  <li><b>Intuitive broadcasting</b> — Adding a bias vector to every row (<code>X + bias</code>), centering every column (<code>X - col_mean</code>), and catching the classic silent <code>(N,) + (N, 1) → (N, N)</code> trap.</li>
+  <li><b>Boolean masks &amp; causal masks</b> — Filtering negatives to <code>0</code> (your first taste of ReLU!) and masking upper-triangle future cells to <code>-inf</code>.</li>
+  <li><b>Exercises</b> — Solve <code>numpy_habits.py</code> locally with <code>pytest</code>.</li>
+</ol>
+
+<nav class="chapter-nav">
+  <a href="matrix-multiply-and-shapes.html"><small>← Previous</small>Matrix multiplication &amp; tensor shapes</a>
+  <a class="next" href="what-is-a-gpu.html"><small>Next →</small>What Is a GPU and Why Do We Need One?</a>
+</nav>
+
+</main>
+<script>
+document.querySelectorAll("[data-copy]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const txt = btn.getAttribute("data-copy");
+    const done = () => { const o = btn.textContent; btn.textContent = "Copied"; setTimeout(() => (btn.textContent = o), 1400); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done);
+    else { const ta = document.createElement("textarea"); ta.value = txt; document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); done(); }
+  });
+});
+</script>
+</body>
+</html>
