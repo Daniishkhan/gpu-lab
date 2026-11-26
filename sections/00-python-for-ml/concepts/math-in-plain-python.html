@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="topic" content="00.02">
-  <meta name="status" content="outline">
   <title>Doing math in plain Python: formulas, stats &amp; 2D grids</title>
   <script>try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("gpu-lab:theme")) || "dark"; } catch (e) {}</script>
   <link rel="stylesheet" href="../../../assets/style.css">
@@ -19,45 +18,910 @@
 <header class="chapter-head">
   <div class="eyebrow">Phase 0A · Subject 00 · Python Primer &amp; Math Fluency</div>
   <h1>Doing math in plain Python: formulas, stats &amp; 2D grids</h1>
-  <div class="meta"><span><span class="kind k-outline">Outline</span> ready for zero-abstraction teach or full chapter</span><span><span class="badge P0">P0</span></span></div>
+  <div class="meta"><span><span class="badge P0">P0</span> Math-to-code bridge</span><span>about 18 minutes</span><span>7 quick checks · 1 CPU exercise</span></div>
 </header>
 
-<p>Translating summation (<code>Σ</code>), mean, weighted average, min-max rescaling, variance, and <code>math.sqrt</code>/<code>exp</code>/<code>log</code> into 3–5 line Python functions, plus working cleanly with 2D lists-of-lists and lambdas.</p>
+<p>Machine learning formulas pack scary-looking symbols like <code>&#x03A3;</code>, <code>&#x03BC;</code>, and <code>&#x03C3;&#x00B2;</code>, yet nearly every one hides a 3-line Python loop over small lists. Trace them by hand on four numbers here, and Phase 0B NumPy and Stage 1 training loops will feel familiar.</p>
 
-<div class="outline-banner">
-  <div>
-    <b>Zero-abstraction blueprint ready.</b> Study this interactively with Gemini (starting from small toy numbers), or expand it into a full visual chapter.
-  </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button class="btn primary" type="button" data-copy="teach me doing math in plain Python: formulas, stats & 2D grids from first principles with small toy numbers">Copy teach prompt</button>
-    <button class="btn" type="button" data-copy="write the full visual chapter for 00.02 (Doing math in plain Python: formulas, stats & 2D grids) following write-chapter, visuals-and-layout, and review-chapter">Copy write-chapter prompt</button>
-  </div>
+<div class="learn-list">
+  <h4>By the end you'll be able to</h4>
+  <ol>
+    <li>Turn summation (<code>&#x03A3;</code>) into loops and <code>sum()</code>, and guard averages, weighted averages, and <code>y = w * x + b</code>.</li>
+    <li>Compute <b>population variance</b> (<code>/ N</code>), standard deviation, and <code>[0.0, 1.0]</code> min-max scaling safely.</li>
+    <li>Index <code>grid[row][col]</code>, sum rows vs. columns, reject ragged tables, and avoid <code>[[0] * cols] * rows</code>.</li>
+    <li>Use <code>math.sqrt</code>, <code>exp</code>, <code>log</code>, and one-line <code>lambda</code> keys — and know when to move to NumPy.</li>
+  </ol>
 </div>
 
-<h2 id="s1"><span class="sec-num">1</span>Planned warm-up arc</h2>
+<p class="muted small">How to read this: work top to bottom and answer every quick check first. Assumes <a href="python-refresher-and-idioms.html">Python refresher &amp; everyday idioms</a>.</p>
+
+<!-- ============================================================ -->
+<h2 id="s1"><span class="sec-num">1</span>Why do math symbols look scarier than the 3-line Python loops underneath?</h2>
+
+<div class="story">
+  <p>Open an ML notebook and you hit <code>&#x03A3; x&#x1D62;</code> and <code>(&#x03A3; s&#x1D62; w&#x1D62;) / (&#x03A3; w&#x1D62;)</code>. On paper it feels locked; in Python, every <code>&#x03A3;</code> is a <code>for</code> loop adding into <code>total = 0.0</code> — or <code>sum()</code>.</p>
+</div>
+
+<p>Carry one anchor across this chapter: a <b>classroom gradebook spreadsheet</b>. One student's quiz scores are a 1D list; the whole class across assignments is a 2D list of lists.</p>
+
+<p>Start with Devon's quiz scores: <code>[73.0, 79.0, 81.0, 87.0]</code>. Sum all four to 320.0 and divide by 4 for a <b>mean</b> (often written <code>&#x03BC;</code>, &ldquo;mu&rdquo;) of 80.0:</p>
+
+<div class="figure">
+  <svg class="viz" viewBox="0 0 680 268" role="img" aria-label="Translating Sigma summation and weighted average formulas into Python sum and zip loops on classroom gradebook scores">
+    <rect x="8" y="8" width="664" height="120" rx="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5"/>
+    <rect x="20" y="20" width="164" height="96" rx="8" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.2"/>
+    <text x="102" y="45" text-anchor="middle" font-size="16" font-weight="700" fill="var(--accent)">&#x03A3; x&#x1D62;</text>
+    <line x1="46" y1="54" x2="158" y2="54" stroke="var(--border-strong)" stroke-width="1.4"/>
+    <text x="102" y="73" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent)">N</text>
+    <text x="102" y="101" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-strong)">sum(xs) / len(xs)</text>
+
+    <line x1="186" y1="68" x2="210" y2="68" stroke="var(--accent)" stroke-width="2"/>
+    <polygon points="210,63 220,68 210,73" fill="var(--accent)"/>
+
+    <text x="252" y="34" text-anchor="middle" font-size="12" fill="var(--muted)">xs[0]</text>
+    <rect x="226" y="42" width="52" height="46" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+    <text x="252" y="71" text-anchor="middle" font-size="16" font-weight="700" fill="var(--text-strong)">73</text>
+    <text x="288" y="70" text-anchor="middle" font-size="15" font-weight="700" fill="var(--muted)">+</text>
+
+    <text x="324" y="34" text-anchor="middle" font-size="12" fill="var(--muted)">xs[1]</text>
+    <rect x="298" y="42" width="52" height="46" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+    <text x="324" y="71" text-anchor="middle" font-size="16" font-weight="700" fill="var(--text-strong)">79</text>
+    <text x="360" y="70" text-anchor="middle" font-size="15" font-weight="700" fill="var(--muted)">+</text>
+
+    <text x="396" y="34" text-anchor="middle" font-size="12" fill="var(--muted)">xs[2]</text>
+    <rect x="370" y="42" width="52" height="46" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+    <text x="396" y="71" text-anchor="middle" font-size="16" font-weight="700" fill="var(--text-strong)">81</text>
+    <text x="432" y="70" text-anchor="middle" font-size="15" font-weight="700" fill="var(--muted)">+</text>
+
+    <text x="468" y="34" text-anchor="middle" font-size="12" fill="var(--muted)">xs[3]</text>
+    <rect x="442" y="42" width="52" height="46" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+    <text x="468" y="71" text-anchor="middle" font-size="16" font-weight="700" fill="var(--text-strong)">87</text>
+    <text x="360" y="110" text-anchor="middle" font-size="12" fill="var(--muted)">i = 0 .. 3 &#x00B7; plain for-loop accumulator</text>
+
+    <line x1="498" y1="68" x2="516" y2="68" stroke="var(--ok)" stroke-width="2"/>
+    <polygon points="516,63 526,68 516,73" fill="var(--ok)"/>
+
+    <rect x="528" y="28" width="132" height="80" rx="8" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.6"/>
+    <text x="594" y="54" text-anchor="middle" font-size="13" fill="var(--text-strong)">total = 320</text>
+    <text x="594" y="76" text-anchor="middle" font-size="12" fill="var(--text)">divide by 4</text>
+    <text x="594" y="98" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">mean = 80.0</text>
+
+    <rect x="8" y="140" width="664" height="120" rx="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5"/>
+    <rect x="20" y="152" width="164" height="96" rx="8" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.2"/>
+    <text x="102" y="178" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent-2)">&#x03A3; (s&#x1D62; &#x00B7; w&#x1D62;)</text>
+    <line x1="46" y1="188" x2="158" y2="188" stroke="var(--border-strong)" stroke-width="1.4"/>
+    <text x="102" y="208" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent-2)">&#x03A3; w&#x1D62;</text>
+    <text x="102" y="234" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-strong)">zip(scores, wts)</text>
+
+    <line x1="186" y1="200" x2="210" y2="200" stroke="var(--accent-2)" stroke-width="2"/>
+    <polygon points="210,195 220,200 210,205" fill="var(--accent-2)"/>
+
+    <rect x="226" y="158" width="120" height="72" rx="8" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.5"/>
+    <text x="286" y="182" text-anchor="middle" font-size="12" fill="var(--text)">s=70, w=1</text>
+    <text x="286" y="210" text-anchor="middle" font-size="14" font-weight="700" fill="var(--text-strong)">70 &#x00D7; 1 = 70</text>
+    <text x="360" y="200" text-anchor="middle" font-size="16" font-weight="700" fill="var(--muted)">+</text>
+
+    <rect x="374" y="158" width="120" height="72" rx="8" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.5"/>
+    <text x="434" y="182" text-anchor="middle" font-size="12" fill="var(--text)">s=90, w=3</text>
+    <text x="434" y="210" text-anchor="middle" font-size="14" font-weight="700" fill="var(--text-strong)">90 &#x00D7; 3 = 270</text>
+    <text x="360" y="248" text-anchor="middle" font-size="12" fill="var(--muted)">weight 3 pulls grade toward 90</text>
+
+    <line x1="498" y1="200" x2="516" y2="200" stroke="var(--ok)" stroke-width="2"/>
+    <polygon points="516,195 526,200 516,205" fill="var(--ok)"/>
+
+    <rect x="528" y="160" width="132" height="80" rx="8" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.6"/>
+    <text x="594" y="186" text-anchor="middle" font-size="13" fill="var(--text-strong)">340 / (1 + 3)</text>
+    <text x="594" y="208" text-anchor="middle" font-size="12" fill="var(--text)">340 / 4</text>
+    <text x="594" y="230" text-anchor="middle" font-size="16" font-weight="700" fill="var(--text-strong)">= 85.0</text>
+  </svg>
+  <div class="cap">Every <code>&#x03A3;</code> is an accumulator over a Python list; adding weights pairs items via <code>zip</code> and divides by total weight (4) instead of count (2).</div>
+</div>
+
+<pre><code>quiz_scores = [73.0, 79.0, 81.0, 87.0]
+total = 0.0
+for x in quiz_scores:
+    total += x
+avg = total / len(quiz_scores)                   # 80.0
+avg_short = sum(quiz_scores) / len(quiz_scores)  # 80.0</code></pre>
+
+<p>On an empty list <code>[]</code>, <code>sum([]) / len([])</code> crashes with <code>ZeroDivisionError</code>, so guard empty inputs with <code>ValueError</code> first.</p>
+
+<p>When a Final Exam (90.0, weight 3.0) counts 3&#x00D7; more than a Quiz (70.0, weight 1.0), a plain mean (80.0) undervalues the final. Pair scores and weights with <code>zip</code> and divide by <code>sum(weights)</code> for a <b>weighted average</b>:</p>
+
+<pre><code>scores, weights = [70.0, 90.0], [1.0, 3.0]
+weighted_sum = sum(s * w for s, w in zip(scores, weights))
+final_grade = weighted_sum / sum(weights)  # 340.0 / 4.0 -&gt; 85.0</code></pre>
+
+<p>A zero weight on one dropped quiz is valid: <code>[50.0, 90.0]</code> with <code>[0.0, 4.0]</code> cleanly returns 90.0. By contrast, a <b>negative weight</b> breaks averaging even when total weight stays positive:</p>
+
+<pre><code># Total weight is +2.0, yet output exceeds both input scores!
+broken = sum(s * w for s, w in zip([70.0, 90.0], [-1.0, 3.0])) / 2.0
+# broken == 100.0</code></pre>
+
+<p>Checking only <code>sum(weights) &lt;= 0</code> misses that bug. Reject all four invalid cases with <code>ValueError</code>:</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Invalid input</th><th>Example</th><th>Failure without a guard</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Empty inputs</td><td><code>[], []</code></td><td><code>ZeroDivisionError</code> on <code>0 / 0</code></td></tr>
+      <tr><td>Length mismatch</td><td><code>[70, 90]</code> vs. <code>[1]</code></td><td><code>zip</code> silently drops 90</td></tr>
+      <tr><td>Any negative weight</td><td><code>[70, 90]</code>, <code>[-1, 3]</code></td><td>Total is +2, yet result hits 100.0</td></tr>
+      <tr><td>Non-positive sum</td><td><code>[70, 90]</code>, <code>[0, 0]</code></td><td>Weights are non-negative, denominator is 0</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="keyidea"><b>Every Sigma is an accumulator:</b> read <code>&#x03A3;</code> as <code>sum()</code> over a loop, and guard empty lists, mismatched <code>zip</code> lengths, negative weights, and zero denominators with <code>ValueError</code>.</div>
+
+<div class="check" id="check-weighted-guards">
+  <p class="q">A weighted-average function checks only <code>sum(weights) &lt;= 0</code> and forgets to reject negative weights. What happens on <code>values = [60.0, 80.0]</code> and <code>weights = [-1.0, 2.0]</code>?</p>
+  <div class="opts">
+    <button>It raises <code>ZeroDivisionError</code> because a negative weight forces the denominator to zero.</button>
+    <button data-correct>Total weight is +1.0, so it passes the check and silently returns 100.0 — above both scores.</button>
+    <button>It returns 80.0 because negative weights act like dropped 0.0 weights.</button>
+  </div>
+  <div class="fb right"><p>Trace: <code>(60 * -1 + 80 * 2) / (-1 + 2) = 100.0 / 1.0 = 100.0</code>. Rejecting any <code>w &lt; 0</code> blocks this while keeping valid zero weights like <code>[0.0, 4.0]</code> working.</p></div>
+  <div class="fb wrong"><p>Check numerator and denominator separately: <code>-1 + 2 = +1</code> (positive, so no division crash), while the numerator subtracts 60 from 160 to yield 100 — outside <code>[60, 80]</code>.</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s2"><span class="sec-num">2</span>How does one straight-line rule (y = w * x + b) turn inputs into predictions?</h2>
+
+<p>Forecast a quiz score <code>y</code> from <code>study_hours = [0.0, 1.0, 2.0, 3.0]</code> using two knobs:</p>
+<ul>
+  <li><b><code>b</code> (offset / bias = 50.0):</b> score at 0 hours; shifting <code>b</code> lifts or lowers every prediction equally.</li>
+  <li><b><code>w</code> (slope / weight = 10.0):</b> points gained per hour; changing <code>w</code> tilts the line steeper, flat (<code>0</code>), or downward (<code>&lt; 0</code>).</li>
+</ul>
+
+<pre><code>study_hours = [0.0, 1.0, 2.0, 3.0]
+points_per_hour, baseline = 10.0, 50.0
+forecast = [float(points_per_hour * h + baseline) for h in study_hours]
+# [50.0, 60.0, 70.0, 80.0]</code></pre>
+
+<p>Unlike averages, <code>w * x + b</code> never divides by length: on empty input <code>[]</code> it cleanly returns <code>[]</code> with no <code>ValueError</code>, and leaves the caller's list untouched.</p>
+
+<div class="figure">
+  <div id="viz-predict-line"></div>
+  <div class="cap">Drag <b>Slope w</b> and <b>Offset b</b> (or click a preset) to watch <code>y = w * x + b</code> pivot around <code>h = 0</code> and shift vertically across <code>[0, 1, 2, 3]</code>.</div>
+</div>
+
+<p>Here <em>you</em> pick <code>w</code> and <code>b</code>. Next chapter wraps <code>(w, b)</code> in a callable <code>LinearScaler</code> class; Stage 1 flips the loop around — start from real <code>(x, y)</code> scores, predict with <code>w * x + b</code>, score squared error, and nudge <code>w</code> and <code>b</code> downhill.</p>
+
+<div class="check" id="check-line-slope-offset">
+  <p class="q">For <code>study_hours = [0.0, 1.0, 2.0, 3.0]</code> and fixed <code>b = 50.0</code>, <code>w = 5.0</code> yields <code>[50.0, 55.0, 60.0, 65.0]</code>. Doubling <code>w</code> to 10.0 produces what?</p>
+  <div class="opts">
+    <button data-correct><code>[50.0, 60.0, 70.0, 80.0]</code> — zero hours stays pinned at 50.0, and each hour adds +10.0.</button>
+    <button><code>[100.0, 110.0, 120.0, 130.0]</code> — doubling <code>w</code> doubles the baseline too.</button>
+    <button><code>[55.0, 60.0, 65.0, 70.0]</code> — increasing <code>w</code> by 5.0 adds +5.0 to every output.</button>
+  </div>
+  <div class="fb right"><p><code>w</code> scales only <code>x</code>, never <code>b</code>: at 0 hours <code>10 * 0 + 50 = 50.0</code>, stepping by +10 per hour while the baseline stays pinned.</p></div>
+  <div class="fb wrong"><p>Separate fixed baseline <code>b = 50.0</code> from per-hour rate <code>w</code>. Doubling the rate from 5 to 10 keeps zero hours at 50.0 and jumps by +10 per hour: 50, 60, 70, 80.</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s3"><span class="sec-num">3</span>Why isn't the average enough — how do we measure spread and rescale columns?</h2>
+
+<p>Three students all average <b>80.0</b> across four quizzes: <b>Sam</b> <code>[80, 80, 80, 80]</code> (flat), <b>Maya</b> <code>[79, 79, 81, 81]</code> (steady), and <b>Devon</b> <code>[73, 79, 81, 87]</code> (streaky). Subtracting 80.0 from Devon's scores gives deviations <code>[-7, -1, +1, +7]</code> — yet adding them gives 0.0 because opposite signs around the mean always cancel.</p>
+
+<p>Square each deviation first (<code>[49, 1, 1, 49]</code>) so signs disappear and large swings weigh more, then average across all <code>N = 4</code> entries to get <b>population variance</b> (often written <code>&#x03C3;&#x00B2;</code>, &ldquo;sigma squared&rdquo;; here <code>100.0 / 4 = 25.0</code>). Taking <code>math.sqrt(25.0)</code> restores quiz-point units: <b>standard deviation</b> is 5.0 for Devon, 1.0 for Maya (<code>var = 1.0</code>), and 0.0 for Sam (constant list).</p>
+
+<pre><code>import math
+
+devon = [73.0, 79.0, 81.0, 87.0]
+avg = sum(devon) / len(devon)         # 80.0
+diffs = [x - avg for x in devon]      # [-7.0, -1.0, 1.0, 7.0]
+sq_diffs = [d ** 2 for d in diffs]    # [49.0, 1.0, 1.0, 49.0]
+pop_var = sum(sq_diffs) / len(devon)  # 25.0 (divide by N, not N-1)
+std_dev = math.sqrt(pop_var)          # 5.0 quiz points</code></pre>
+
+<p>ML code and NumPy's default <code>var()</code> divide by <b><code>N</code></b> (<b>not <code>N - 1</code></b>), and raise <code>ValueError</code> on empty <code>[]</code>.</p>
+
+<details class="aside deeper">
+  <summary>Go deeper: Why statistics textbooks divide by N &#x2212; 1 while ML divides by N</summary>
+  <p>Classical statistics divides by <code>N - 1</code> (<b>Bessel's correction</b>) when estimating an unseen larger population from a tiny sample — on Devon's scores, <code>100 / 3 &#x2248; 33.3333</code> (<code>statistics.variance</code>) vs. <code>25.0</code> (<code>statistics.pvariance</code>). ML layers measure the batch in hand, so code divides by <code>N</code>; by <code>N = 1,000</code> the gap shrinks to 0.1%.</p>
+</details>
+
+<p>To compare columns on different scales — like homework <code>[20.0, 40.0, 60.0, 100.0]</code> beside a 5-point bonus — <b>min-max rescaling</b> maps values linearly onto <code>[0.0, 1.0]</code> by subtracting the minimum and dividing by <code>span = high - low</code>:</p>
+
+<pre><code>homework = [20.0, 40.0, 60.0, 100.0]
+low, high = min(homework), max(homework)
+span = high - low                             # 80.0
+scaled = [(x - low) / span for x in homework] # [0.0, 0.25, 0.5, 1.0]</code></pre>
+
+<p>Watch the constant-column trap: if every score is <code>[80.0, 80.0, 80.0]</code>, <code>span</code> is 0.0 and division crashes with <code>ZeroDivisionError</code>. Check <code>high == low</code> first and return <code>[0.0] * len(xs)</code>, raise <code>ValueError</code> on empty <code>[]</code>, and never mutate the caller's list.</p>
+
+<div class="figure">
+  <svg class="viz" viewBox="0 0 680 326" role="img" aria-label="Comparing Devon's raw deviations that cancel to zero against squared deviations giving population variance 25.0 and standard deviation 5.0, plus min-max rescaling from 20..100 onto 0..1 with the flat-input guard">
+    <rect x="8" y="8" width="664" height="156" rx="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5"/>
+    <text x="24" y="32" font-size="13" font-weight="700" fill="var(--accent)">1. DEVON'S SPREAD AROUND MEAN = 80.0  ([73, 79, 81, 87])</text>
+
+    <text x="24" y="72" font-size="13" font-weight="600" fill="var(--muted)">x - 80:</text>
+    <rect x="104" y="48" width="58" height="38" rx="6" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.5"/>
+    <text x="133" y="72" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">-7</text>
+    <rect x="172" y="48" width="58" height="38" rx="6" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.5"/>
+    <text x="201" y="72" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">-1</text>
+    <rect x="240" y="48" width="58" height="38" rx="6" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.5"/>
+    <text x="269" y="72" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">+1</text>
+    <rect x="308" y="48" width="58" height="38" rx="6" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.5"/>
+    <text x="337" y="72" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">+7</text>
+
+    <line x1="376" y1="67" x2="452" y2="67" stroke="var(--bad)" stroke-width="2"/>
+    <polygon points="452,62 462,67 452,72" fill="var(--bad)"/>
+    <text x="414" y="59" text-anchor="middle" font-size="12" fill="var(--muted)">sum</text>
+
+    <rect x="466" y="44" width="190" height="46" rx="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.6"/>
+    <text x="561" y="64" text-anchor="middle" font-size="14" font-weight="700" fill="var(--text-strong)">sum = 0.0</text>
+    <text x="561" y="82" text-anchor="middle" font-size="12" fill="var(--text)">signs cancel out!</text>
+
+    <text x="24" y="130" font-size="13" font-weight="600" fill="var(--muted)">(x-80)&#x00B2;:</text>
+    <rect x="104" y="106" width="58" height="38" rx="6" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.5"/>
+    <text x="133" y="130" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">49</text>
+    <rect x="172" y="106" width="58" height="38" rx="6" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.5"/>
+    <text x="201" y="130" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">1</text>
+    <rect x="240" y="106" width="58" height="38" rx="6" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.5"/>
+    <text x="269" y="130" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">1</text>
+    <rect x="308" y="106" width="58" height="38" rx="6" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.5"/>
+    <text x="337" y="130" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">49</text>
+
+    <line x1="376" y1="125" x2="452" y2="125" stroke="var(--ok)" stroke-width="2"/>
+    <polygon points="452,120 462,125 452,130" fill="var(--ok)"/>
+    <text x="414" y="117" text-anchor="middle" font-size="12" fill="var(--muted)">&#x00F7; N (4)</text>
+
+    <rect x="466" y="102" width="190" height="46" rx="8" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.6"/>
+    <text x="561" y="122" text-anchor="middle" font-size="14" font-weight="700" fill="var(--text-strong)">var = 100/4 = 25</text>
+    <text x="561" y="140" text-anchor="middle" font-size="12" fill="var(--text)">std = &#x221A;25 = 5.0</text>
+
+    <rect x="8" y="176" width="664" height="142" rx="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5"/>
+    <text x="24" y="200" font-size="13" font-weight="700" fill="var(--accent-2)">2. MIN-MAX RULER: (x - 20) / (100 - 20)   [span = 80]</text>
+
+    <text x="60" y="236" text-anchor="end" font-size="12" fill="var(--muted)">raw</text>
+    <line x1="76" y1="232" x2="444" y2="232" stroke="var(--border-strong)" stroke-width="2"/>
+    <line x1="76" y1="232" x2="76" y2="278" stroke="var(--border-strong)" stroke-dasharray="3 3"/>
+    <line x1="168" y1="232" x2="168" y2="278" stroke="var(--border-strong)" stroke-dasharray="3 3"/>
+    <line x1="260" y1="232" x2="260" y2="278" stroke="var(--border-strong)" stroke-dasharray="3 3"/>
+    <line x1="444" y1="232" x2="444" y2="278" stroke="var(--border-strong)" stroke-dasharray="3 3"/>
+
+    <circle cx="76" cy="232" r="5" fill="var(--accent)"/>
+    <text x="76" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">20</text>
+    <circle cx="168" cy="232" r="5" fill="var(--accent)"/>
+    <text x="168" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">40</text>
+    <circle cx="260" cy="232" r="5" fill="var(--accent)"/>
+    <text x="260" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">60</text>
+    <circle cx="444" cy="232" r="5" fill="var(--accent)"/>
+    <text x="444" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">100</text>
+
+    <text x="60" y="282" text-anchor="end" font-size="12" fill="var(--muted)">[0,1]</text>
+    <line x1="76" y1="278" x2="444" y2="278" stroke="var(--ok)" stroke-width="2.2"/>
+    <circle cx="76" cy="278" r="5" fill="var(--ok)"/>
+    <text x="76" y="302" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">0.0</text>
+    <circle cx="168" cy="278" r="5" fill="var(--ok)"/>
+    <text x="168" y="302" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">0.25</text>
+    <circle cx="260" cy="278" r="5" fill="var(--ok)"/>
+    <text x="260" y="302" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">0.5</text>
+    <circle cx="444" cy="278" r="5" fill="var(--ok)"/>
+    <text x="444" y="302" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">1.0</text>
+
+    <rect x="466" y="214" width="190" height="88" rx="8" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.6"/>
+    <text x="561" y="236" text-anchor="middle" font-size="12" font-weight="700" fill="var(--warn)">FLAT-INPUT GUARD</text>
+    <text x="561" y="258" text-anchor="middle" font-size="12" fill="var(--text-strong)">[80, 80, 80] &#x2192; span=0</text>
+    <text x="561" y="276" text-anchor="middle" font-size="12" fill="var(--text)">skip &#x00F7; 0 crash</text>
+    <text x="561" y="294" text-anchor="middle" font-size="12" font-weight="700" fill="var(--text-strong)">return [0.0, 0.0, 0.0]</text>
+  </svg>
+  <div class="cap">Squaring stops opposite deviations from canceling (population variance 25.0, std dev 5.0), while min-max scaling preserves relative gaps and guards flat lists against <code>span = 0</code>.</div>
+</div>
+
+<p><b>Practical float note:</b> binary floats leave tiny rounding dust (<code>0.1 + 0.2</code> equals <code>0.30000000000000004</code>, so <code>== 0.3</code> is <code>False</code>). Compare float outputs with <code>pytest.approx(...)</code> or <code>math.isclose(...)</code> instead of bare <code>==</code>.</p>
+
+<div class="check" id="check-variance-shift">
+  <p class="q">A +10 curve shifts Devon's scores from <code>[73, 79, 81, 87]</code> (mean 80.0, population variance 25.0) to <code>[83, 89, 91, 97]</code>. What are the new mean and population variance?</p>
+  <div class="opts">
+    <button>Mean 90.0, variance 35.0 — adding 10 shifts both statistics by 10.</button>
+    <button>Mean 90.0, variance 33.33 — divide 100.0 by <code>N - 1 = 3</code>.</button>
+    <button data-correct>Mean 90.0, variance 25.0 — deviations stay <code>[-7, -1, 1, 7]</code> and <code>100 / 4</code> stays 25.0.</button>
+  </div>
+  <div class="fb right"><p>Every score and the mean both shift by +10, leaving each gap <code>x - mean</code> unchanged. Dividing 100 by <code>N = 4</code> keeps variance at 25.0.</p></div>
+  <div class="fb wrong"><p>Slide four pins 10 ticks right along a ruler: their center moves from 80 to 90 while every gap between pins stays identical, so spread stays 25.0.</p></div>
+</div>
+
+<div class="check" id="check-minmax-constant">
+  <p class="q">Every student scores 80.0 on Quiz 3: <code>[80.0, 80.0, 80.0]</code>. Compare unguarded <code>(x - low) / (high - low)</code> with a guarded scaler.</p>
+  <div class="opts">
+    <button data-correct>Unguarded raises <code>ZeroDivisionError</code>; guarded checks <code>high == low</code> and returns <code>[0.0, 0.0, 0.0]</code>.</button>
+    <button>Python turns <code>0.0 / 0.0</code> into 0.0, so both return <code>[0.0, 0.0, 0.0]</code>.</button>
+    <button>Unguarded returns <code>[1.0, 1.0, 1.0]</code>; guarded raises <code>ValueError</code>.</button>
+  </div>
+  <div class="fb right"><p><code>0.0 / 0.0</code> raises <code>ZeroDivisionError</code>. Returning <code>[0.0] * len(xs)</code> handles tied columns while reserving <code>ValueError</code> for empty <code>[]</code>.</p></div>
+  <div class="fb wrong"><p>The denominator is <code>high - low</code>, not <code>high</code>. When every score is 80.0, <code>80 - 80 = 0</code> crashes unless you return zeros first.</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s4"><span class="sec-num">4</span>How do 2D lists-of-lists work — rows, columns, ragged tables &amp; the shared-row trap?</h2>
+
+<p>Zoom out to a non-square 2 &#x00D7; 3 gradebook (2 students &#x00D7; 3 assignments: Quiz 1, Quiz 2, Final). Always read two brackets <b>row first, column second</b> (<code>gradebook[row][col]</code>):</p>
+
+<pre><code>gradebook = [
+    [70.0, 80.0, 90.0],   # Row 0: Maya
+    [75.0, 85.0, 95.0],   # Row 1: Devon
+]
+maya_row = gradebook[0]                        # [70.0, 80.0, 90.0]
+devon_final = gradebook[1][2]                  # 95.0 (row 1, col 2)
+quiz2_col = [row[1] for row in gradebook]      # [80.0, 85.0]
+row_totals = [sum(row) for row in gradebook]   # [240.0, 255.0]
+quiz1_total = sum(row[0] for row in gradebook) # 145.0</code></pre>
+
+<p><b>Row sums</b> collapse across columns into 2 student totals (<code>[240.0, 255.0]</code>, NumPy <code>axis=1</code>); <b>column sums</b> collapse down rows into 3 assignment totals (<code>[145.0, 165.0, 185.0]</code>, NumPy <code>axis=0</code>).</p>
+
+<div class="figure">
+  <div id="viz-grid-sums"></div>
+  <div class="cap">Step through <code>gradebook[row][col]</code> cell by cell, then toggle <b>Column sums &#x2193;</b> (3 totals, <code>axis=0</code>) vs. <b>Row sums &#x2192;</b> (2 totals, <code>axis=1</code>).</div>
+</div>
+
+<p>Before summing columns, confirm a non-empty rectangle. A 1 &#x00D7; 1 grid like <code>[[85.0]]</code> is valid (<code>[85.0]</code>), while empty <code>[]</code>, empty rows <code>[[]]</code>, and <b>ragged</b> rows like <code>[[70, 80, 90], [75, 85]]</code> must raise <code>ValueError</code> (shorter rows crash with <code>IndexError</code>; if the shorter row comes first, <code>range(len(grid[0]))</code> silently drops the last column!).</p>
+
+<p>For blank grids, <code>[[0] * 3] * 2</code> builds <b>one</b> inner row and copies two references to it, so editing one student mutates both. Build independent rows with a comprehension:</p>
+
+<pre><code>bad = [[0] * 3] * 2
+bad[0][0] = 95
+# [[95, 0, 0], [95, 0, 0]]  &lt;-- both rows changed!
+
+good = [[0] * 3 for _ in range(2)]
+good[0][0] = 95
+# [[95, 0, 0], [0, 0, 0]]   &lt;-- independent rows</code></pre>
+
+<div class="figure">
+  <svg class="viz" viewBox="0 0 680 264" role="img" aria-label="Comparing the Python [[0] * 3] * 2 shared-row aliasing trap where editing bad[0][0] mutates both rows against [[0] * 3 for _ in range(2)] which builds independent rows">
+    <rect x="8" y="8" width="326" height="248" rx="10" fill="var(--surface)" stroke="var(--bad)" stroke-width="1.8"/>
+    <text x="171" y="34" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">TRAP: bad = [[0]*3]*2</text>
+    <text x="171" y="52" text-anchor="middle" font-size="12" fill="var(--muted)">two sticky notes &#x2192; ONE shared row</text>
+
+    <rect x="24" y="72" width="66" height="36" rx="6" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="1.4"/>
+    <text x="57" y="95" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">bad[0]</text>
+    <rect x="24" y="122" width="66" height="36" rx="6" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="1.4"/>
+    <text x="57" y="145" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">bad[1]</text>
+
+    <line x1="90" y1="90" x2="146" y2="112" stroke="var(--bad)" stroke-width="2"/>
+    <polygon points="142,106 154,115 140,117" fill="var(--bad)"/>
+    <line x1="90" y1="140" x2="146" y2="122" stroke="var(--bad)" stroke-width="2"/>
+    <polygon points="140,117 154,119 143,128" fill="var(--bad)"/>
+
+    <rect x="156" y="92" width="162" height="50" rx="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.8"/>
+    <rect x="164" y="100" width="44" height="34" rx="5" fill="var(--bad)"/>
+    <text x="186" y="123" text-anchor="middle" font-size="15" font-weight="700" fill="var(--on-accent)">95</text>
+    <rect x="215" y="100" width="44" height="34" rx="5" fill="var(--surface)" stroke="var(--border-strong)"/>
+    <text x="237" y="123" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">0</text>
+    <rect x="266" y="100" width="44" height="34" rx="5" fill="var(--surface)" stroke="var(--border-strong)"/>
+    <text x="288" y="123" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">0</text>
+
+    <rect x="24" y="180" width="294" height="60" rx="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.4"/>
+    <text x="171" y="203" text-anchor="middle" font-size="12" fill="var(--text)">After bad[0][0] = 95 (both change!):</text>
+    <text x="171" y="226" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">[[95, 0, 0], [95, 0, 0]]</text>
+
+    <rect x="346" y="8" width="326" height="248" rx="10" fill="var(--surface)" stroke="var(--ok)" stroke-width="1.8"/>
+    <text x="509" y="34" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">SAFE: [[0]*3 for _ in range(2)]</text>
+    <text x="509" y="52" text-anchor="middle" font-size="12" fill="var(--muted)">each step builds a brand-new row</text>
+
+    <rect x="362" y="72" width="66" height="36" rx="6" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="1.4"/>
+    <text x="395" y="95" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">good[0]</text>
+    <rect x="362" y="122" width="66" height="36" rx="6" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="1.4"/>
+    <text x="395" y="145" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">good[1]</text>
+
+    <line x1="428" y1="90" x2="482" y2="90" stroke="var(--ok)" stroke-width="2"/>
+    <polygon points="482,85 492,90 482,95" fill="var(--ok)"/>
+    <line x1="428" y1="140" x2="482" y2="140" stroke="var(--border-strong)" stroke-width="2"/>
+    <polygon points="482,135 492,140 482,145" fill="var(--border-strong)"/>
+
+    <rect x="494" y="68" width="162" height="44" rx="7" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.6"/>
+    <rect x="502" y="74" width="44" height="32" rx="5" fill="var(--ok)"/>
+    <text x="524" y="95" text-anchor="middle" font-size="15" font-weight="700" fill="var(--on-accent)">95</text>
+    <rect x="553" y="74" width="44" height="32" rx="5" fill="var(--surface)" stroke="var(--border-strong)"/>
+    <text x="575" y="95" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">0</text>
+    <rect x="604" y="74" width="44" height="32" rx="5" fill="var(--surface)" stroke="var(--border-strong)"/>
+    <text x="626" y="95" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">0</text>
+
+    <rect x="494" y="118" width="162" height="44" rx="7" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="1.4"/>
+    <rect x="502" y="124" width="44" height="32" rx="5" fill="var(--surface)" stroke="var(--border-strong)"/>
+    <text x="524" y="145" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">0</text>
+    <rect x="553" y="124" width="44" height="32" rx="5" fill="var(--surface)" stroke="var(--border-strong)"/>
+    <text x="575" y="145" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">0</text>
+    <rect x="604" y="124" width="44" height="32" rx="5" fill="var(--surface)" stroke="var(--border-strong)"/>
+    <text x="626" y="145" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text-strong)">0</text>
+
+    <rect x="362" y="180" width="294" height="60" rx="8" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.4"/>
+    <text x="509" y="203" text-anchor="middle" font-size="12" fill="var(--text)">After good[0][0] = 95 (row 1 safe):</text>
+    <text x="509" y="226" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-strong)">[[95, 0, 0], [0, 0, 0]]</text>
+  </svg>
+  <div class="cap">Multiplying a list of lists links both rows to one shared list; a comprehension creates a separate inner list on every pass.</div>
+</div>
+
+<div class="callout warn">
+  <b>Where the spreadsheet analogy breaks:</b>
+  <ol>
+    <li><b>Row-first 0-based indexing:</b> spreadsheets use column-first 1-based labels (<code>C2</code>); Python always indexes <code>grid[row][col]</code> from 0.</li>
+    <li><b>No silent blank-cell padding:</b> ragged Python rows crash with <code>IndexError</code> or silently drop trailing columns unless validated.</li>
+    <li><b>Shared mutable rows:</b> copying a spreadsheet row copies values; <code>[[0] * 3] * 2</code> wires multiple rows to one shared list.</li>
+  </ol>
+</div>
+
+<div class="check" id="check-grid-ragged">
+  <p class="q">An unvalidated loop runs <code>[sum(row[c] for row in grid) for c in range(len(grid[0]))]</code>. What happens on <code>[[70, 80, 90], [75, 85]]</code> — and if those rows are swapped?</p>
+  <div class="opts">
+    <button>Missing cells count as 0.0, returning <code>[145, 165, 90]</code> in both orders.</button>
+    <button data-correct>Row 1 raises <code>IndexError</code> at <code>c = 2</code>; swapped to <code>[[75, 85], [70, 80, 90]]</code>, it silently drops 90 and returns <code>[145, 165]</code>.</button>
+    <button>It sums rows instead, returning <code>[240, 160]</code>.</button>
+  </div>
+  <div class="fb right"><p><code>len(grid[0])</code> trusts row 0 alone: shorter later rows raise <code>IndexError</code>, while wider later rows lose extra columns silently. Validate equal row lengths (and reject <code>[]</code>, <code>[[]]</code>).</p></div>
+  <div class="fb wrong"><p>Trace <code>range(len(grid[0]))</code>: width 3 fails when row 1 has only 2 items, and width 2 skips column 2 completely, silently discarding 90.</p></div>
+</div>
+
+<div class="check" id="check-grid-aliasing">
+  <p class="q">You create <code>bad = [[0] * 3] * 2</code> and assign <code>bad[1][2] = 95</code>. What does <code>bad[0][2]</code> hold afterward?</p>
+  <div class="opts">
+    <button>0 — editing row 1 leaves row 0 untouched.</button>
+    <button><code>IndexError</code> — <code>* 2</code> creates a flat 1D list of length 6.</button>
+    <button data-correct>95 — both rows point to one shared list, giving <code>[[0, 0, 95], [0, 0, 95]]</code>.</button>
+  </div>
+  <div class="fb right"><p><code>* 2</code> copies the reference to the single inner row twice. Use <code>[[0] * 3 for _ in range(2)]</code> to allocate independent rows.</p></div>
+  <div class="fb wrong"><p>Think of two monitors showing the exact same row: writing 95 into slot 2 on monitor 1 appears on monitor 0 immediately.</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s5"><span class="sec-num">5</span>Which three math functions and one-line lambdas show up in every ML script?</h2>
+
+<p>Three helpers from Python's <code>math</code> module show up across ML codebases. Test each on three inputs to lock in its curve and domain walls:</p>
+
+<pre><code>import math
+
+roots = [math.sqrt(0), math.sqrt(25), math.sqrt(100)]
+# [0.0, 5.0, 10.0]
+growth = [round(math.exp(x), 3) for x in (-1, 0, 2)]
+# [0.368, 1.0, 7.389]
+logs = [round(math.log(x), 3) for x in (0.1, 1.0, math.e)]
+# [-2.303, 0.0, 1.0]</code></pre>
+
+<p><code>math.sqrt(x)</code> undoes squaring, <code>math.exp(x)</code> raises Euler's constant <code>math.e</code> (about 2.718) to the power <code>x</code> and stays strictly positive, and <code>math.log(x)</code> is its undo button (<code>math.log(math.exp(x)) == x</code>).</p>
+
+<div class="figure">
+  <svg class="viz" viewBox="0 0 680 212" role="img" aria-label="Three mini-curve plots for math.sqrt, math.exp, and math.log showing worked sample points and domain boundaries">
+    <rect x="8" y="8" width="212" height="196" rx="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5"/>
+    <text x="114" y="30" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent)">math.sqrt(x)</text>
+    <text x="114" y="48" text-anchor="middle" font-size="12" fill="var(--muted)">domain: x &gt;= 0</text>
+    <line x1="34" y1="152" x2="204" y2="152" stroke="var(--border-strong)" stroke-width="1.4"/>
+    <line x1="34" y1="56" x2="34" y2="152" stroke="var(--warn)" stroke-width="1.6" stroke-dasharray="4 3"/>
+    <polyline points="34.0,152.0 37.2,139.7 41.9,132.5 49.8,124.4 59.3,117.1 73.5,108.4 90.9,99.6 111.5,90.9 135.2,82.2 162.1,73.5 192.1,64.7" fill="none" stroke="var(--accent)" stroke-width="2.4"/>
+    <circle cx="34.0" cy="152.0" r="4.5" fill="var(--ok)" stroke="var(--surface)" stroke-width="1.4"/>
+    <text x="44" y="170" text-anchor="start" font-size="12" font-weight="700" fill="var(--text-strong)">(0, 0)</text>
+    <circle cx="73.5" cy="108.4" r="4.5" fill="var(--ok)" stroke="var(--surface)" stroke-width="1.4"/>
+    <text x="80" y="126" text-anchor="start" font-size="12" font-weight="700" fill="var(--text-strong)">(25, 5)</text>
+    <circle cx="192.1" cy="64.7" r="4.5" fill="var(--ok)" stroke="var(--surface)" stroke-width="1.4"/>
+    <text x="202" y="104" text-anchor="end" font-size="12" font-weight="700" fill="var(--text-strong)">(100, 10)</text>
+    <text x="114" y="192" text-anchor="middle" font-size="12" fill="var(--muted)">sqrt(-1) &#x2192; ValueError</text>
+
+    <rect x="234" y="8" width="212" height="196" rx="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5"/>
+    <text x="340" y="30" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-2)">math.exp(x)</text>
+    <text x="340" y="48" text-anchor="middle" font-size="12" fill="var(--muted)">always strictly &gt; 0</text>
+    <line x1="258" y1="146.7" x2="430" y2="146.7" stroke="var(--warn)" stroke-width="1.6" stroke-dasharray="4 3"/>
+    <line x1="344.0" y1="56" x2="344.0" y2="152" stroke="var(--border)" stroke-width="1.2" stroke-dasharray="3 3"/>
+    <polyline points="268.5,145.2 276.1,144.9 283.6,144.5 291.2,144.0 298.7,143.5 306.3,142.7 313.8,141.9 321.4,140.8 328.9,139.5 336.5,137.9 344.0,136.0 351.5,133.6 359.1,130.8 366.6,127.2 374.2,122.9 381.7,117.7 389.3,111.3 396.8,103.4 404.4,93.8 411.9,82.1 419.5,67.9" fill="none" stroke="var(--accent-2)" stroke-width="2.4"/>
+    <circle cx="306.3" cy="142.7" r="4.5" fill="var(--ok)" stroke="var(--surface)" stroke-width="1.4"/>
+    <text x="252" y="124" text-anchor="start" font-size="12" font-weight="700" fill="var(--text-strong)">(-1, 0.37)</text>
+    <circle cx="344.0" cy="136.0" r="4.5" fill="var(--ok)" stroke="var(--surface)" stroke-width="1.4"/>
+    <text x="352" y="166" text-anchor="middle" font-size="12" font-weight="700" fill="var(--text-strong)">(0, 1)</text>
+    <circle cx="419.5" cy="67.9" r="4.5" fill="var(--ok)" stroke="var(--surface)" stroke-width="1.4"/>
+    <text x="406" y="72" text-anchor="end" font-size="12" font-weight="700" fill="var(--text-strong)">(2, 7.39)</text>
+    <text x="340" y="192" text-anchor="middle" font-size="12" fill="var(--muted)">exp(-5) &#x2248; 0.0067 &gt; 0</text>
+
+    <rect x="460" y="8" width="212" height="196" rx="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5"/>
+    <text x="566" y="30" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ok)">math.log(x)</text>
+    <text x="566" y="48" text-anchor="middle" font-size="12" fill="var(--muted)">domain: x &gt; 0</text>
+    <line x1="488" y1="89.5" x2="658" y2="89.5" stroke="var(--border-strong)" stroke-width="1.2" stroke-dasharray="3 3"/>
+    <line x1="488" y1="56" x2="488" y2="152" stroke="var(--bad)" stroke-width="1.8" stroke-dasharray="4 3"/>
+    <polyline points="492.3,145.9 493.4,140.9 496.0,131.8 501.4,120.4 509.4,109.9 520.1,100.9 530.8,94.5 541.5,89.5 557.6,83.6 579.0,77.6 600.5,72.9 621.9,69.0 633.6,67.2 648.6,65.0" fill="none" stroke="var(--ok)" stroke-width="2.4"/>
+    <circle cx="493.4" cy="140.9" r="4.5" fill="var(--ok)" stroke="var(--surface)" stroke-width="1.4"/>
+    <text x="504" y="147" text-anchor="start" font-size="12" font-weight="700" fill="var(--text-strong)">(0.1, -2.3)</text>
+    <circle cx="541.5" cy="89.5" r="4.5" fill="var(--ok)" stroke="var(--surface)" stroke-width="1.4"/>
+    <text x="548" y="109" text-anchor="start" font-size="12" font-weight="700" fill="var(--text-strong)">(1, 0)</text>
+    <circle cx="633.6" cy="67.2" r="4.5" fill="var(--ok)" stroke="var(--surface)" stroke-width="1.4"/>
+    <text x="634" y="86" text-anchor="middle" font-size="12" font-weight="700" fill="var(--text-strong)">(e, 1)</text>
+    <text x="566" y="192" text-anchor="middle" font-size="12" fill="var(--muted)">log(0) &#x2192; ValueError</text>
+  </svg>
+  <div class="cap">Remember the three domain walls: <code>sqrt</code> stops at 0, <code>exp</code> stays strictly above 0, and <code>log</code> requires <code>x &gt; 0</code>.</div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Helper</th><th>Domain &amp; error</th><th>ML preview</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>math.sqrt(x)</code></td><td><code>x &gt;= 0</code> (negatives raise <code>ValueError</code>)</td><td>Std dev here; vector lengths in Phase 0B</td></tr>
+      <tr><td><code>math.exp(x)</code></td><td>Any real (<code>exp(1000)</code> raises <code>OverflowError</code>)</td><td>Turning raw scores into positive weights in Stage 1</td></tr>
+      <tr><td><code>math.log(x)</code></td><td><code>x &gt; 0</code> (0 or negatives raise <code>ValueError</code>)</td><td>Exact inverse of <code>exp</code>; surprise <code>-log(p)</code> in Stage 1</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>To rank student dictionaries by one field without crashing on bare <code>sorted(records)</code> (<code>TypeError</code>), pass a one-line unnamed function via <code>key=lambda ...</code> — read <code>lambda r: r["final"]</code> aloud as &ldquo;take record <code>r</code> and return <code>r["final"]</code>&rdquo;:</p>
+
+<pre><code>records = [
+    {"name": "Maya", "avg": 80.0, "final": 90.0},
+    {"name": "Devon", "avg": 85.0, "final": 95.0},
+    {"name": "Sam", "avg": 78.0, "final": 98.0},
+]
+# Rank by final score (Sam, Devon, Maya) and pick top avg (Devon)
+by_final = sorted(records, key=lambda r: r["final"], reverse=True)
+best_avg = max(records, key=lambda r: r["avg"])</code></pre>
+
+<p><b>When to prefer <code>def</code> over <code>lambda</code>:</b> switch to <code>def</code> whenever a helper needs validation guards, a second line, reuse, a docstring, or a named traceback — never write <code>f = lambda x: ...</code>.</p>
+
+<div class="check" id="check-math-domain">
+  <p class="q">What happens when you evaluate <code>math.exp(-5)</code> and <code>math.log(0.0)</code> in Python?</p>
+  <div class="opts">
+    <button data-correct><code>math.exp(-5)</code> returns a tiny positive float (~0.0067); <code>math.log(0.0)</code> raises <code>ValueError</code>.</button>
+    <button><code>math.exp(-5)</code> returns a negative float; <code>math.log(0.0)</code> returns 0.0.</button>
+    <button>Both raise <code>ValueError</code> on non-positive inputs.</button>
+  </div>
+  <div class="fb right"><p><code>1 / e&#x2075; &#x2248; 0.0067</code> is strictly positive. Because no power of <code>e</code> reaches 0, <code>math.log(0.0)</code> raises <code>ValueError</code> (while <code>math.log(1.0) == 0.0</code>).</p></div>
+  <div class="fb wrong"><p>Trace the two curves above: <code>math.exp(x)</code> stays strictly above the dashed <code>y = 0</code> floor for every negative <code>x</code>, whereas <code>math.log(x)</code> plunges downward as <code>x</code> nears 0 (<code>log(1.0) = 0.0</code>, <code>log(0.1) &#x2248; -2.3</code>, <code>log(0.001) &#x2248; -6.9</code>) and hits the red wall at <code>x = 0</code> with no finite answer, raising <code>ValueError</code>.</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s6"><span class="sec-num">6</span>How does this map to NumPy &amp; ML — and when should you stop using plain Python loops?</h2>
+
+<p>Every NumPy and Stage 1 one-liner ahead is one of today's loops in disguise:</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Plain Python today</th><th>Next-stage equivalent</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>sum(xs) / len(xs)</code></td><td><code>arr.mean()</code> (Phase 0B)</td></tr>
+      <tr><td><code>sum(s * w for s, w in zip(...))</code></td><td><code>v @ w</code> dot product (Phase 0B)</td></tr>
+      <tr><td><code>sum((x - mu) ** 2 for x in xs) / len(xs)</code></td><td><code>arr.var()</code> (population, divides by <code>N</code>)</td></tr>
+      <tr><td><code>(x - low) / (high - low)</code></td><td>Feature scaling (Stage 1)</td></tr>
+      <tr><td><code>[w * x + b for x in xs]</code></td><td><code>LinearScaler</code> &amp; line fitting</td></tr>
+      <tr><td>Row sums vs. column sums</td><td><code>grid.sum(axis=1)</code> vs. <code>axis=0</code></td></tr>
+      <tr><td><code>math.sqrt</code>, <code>exp</code>, <code>log</code></td><td>Vector lengths, weights &amp; surprise</td></tr>
+      <tr><td><code>max(records, key=lambda r: ...)</code></td><td>Best model run selection</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p><b>Five production gotchas:</b> (1) unchecked zero denominators (<code>[]</code>, <code>sum(weights) &lt;= 0</code>, <code>high == low</code>) and degenerate 2D grids (<code>[[]]</code>, ragged rows); (2) sum-only weight checks missing negative weights; (3) mixing up <code>/ N</code> and <code>/ (N - 1)</code> variance; (4) mutating caller lists or using <code>[[0] * cols] * rows</code>; (5) strict <code>==</code> on floats instead of <code>pytest.approx</code> / <code>math.isclose</code>.</p>
+
+<p><b>When NOT to use plain Python loops:</b> plain loops shine for small inputs, prototyping, and zero-dependency tests, but leave nested loops behind for 1,000 &#x00D7; 1,000 matrices, full datasets, or large audio or image grids — interpreter overhead makes them 50&#x00D7;–1,000&#x00D7; slower than NumPy or GPUs.</p>
+
+<details class="aside another">
+  <summary>Explain it another way: Cross-checking with statistics and zip(..., strict=True)</summary>
+  <p>Python's standard library offers quick sanity checks: <code>statistics.fmean(devon)</code> gives 80.0 and <code>statistics.pvariance(devon)</code> gives 25.0 (population <code>/ N</code>, whereas <code>statistics.variance</code> divides by <code>N - 1</code>). On Python 3.10+, <code>zip(scores, weights, strict=True)</code> also raises <code>ValueError</code> on length mismatch.</p>
+</details>
+
+<!-- ============================================================ -->
+<h2 id="summary"><span class="sec-num">&#x2713;</span>What to remember</h2>
 <ol>
-  <li><b>Math symbols are just tiny Python loops</b> — Translating <code>Σ</code>, averages, weighted averages, and <code>y = w * x + b</code> into 3-line functions tested on 4 tiny numbers.</li>
-  <li><b>Measuring spread &amp; rescaling numbers</b> — Computing mean, variance, standard deviation, and min-max scaling to <code>[0, 1]</code> by hand and in Python.</li>
-  <li><b>Working comfortably with 2D grids (lists of lists)</b> — Rows vs. columns, grabbing column <code>j</code>, summing across rows vs. down columns, and avoiding the <code>[[0] * cols] * rows</code> shared-row trap.</li>
-  <li><b>Standard math helpers &amp; small lambdas</b> — Using <code>math.sqrt</code>, <code>math.exp</code>, <code>math.log</code>, and passing helper functions (<code>key=lambda ...</code>) cleanly.</li>
-  <li><b>Hands-on exercise</b> — Solve <code>python_math_drills.py</code> locally with <code>pytest</code>.</li>
+  <li>Every <code>&#x03A3;</code> is an accumulator; reject empty inputs, length mismatches, negative weights, and zero denominators with <code>ValueError</code>.</li>
+  <li>In <code>y = w * x + b</code>, <code>b</code> sets the baseline at 0, <code>w</code> sets the slope, and <code>[]</code> returns <code>[]</code>.</li>
+  <li><b>Population variance</b> averages <code>(x - mean) ** 2</code> by <code>N</code> (not <code>N - 1</code>); <code>math.sqrt(var)</code> restores original units.</li>
+  <li><b>Min-max scaling</b> maps to <code>[0.0, 1.0]</code>, returns <code>[0.0] * len(xs)</code> when <code>high == low</code>, avoids mutation, and uses <code>pytest.approx</code>.</li>
+  <li>2D grids index <code>grid[row][col]</code>: row sums are <code>axis=1</code>, column sums are <code>axis=0</code>, ragged grids raise <code>ValueError</code>, and blank grids use <code>[[0] * cols for _ in range(rows)]</code>.</li>
 </ol>
 
+<div class="review" id="review"></div>
+
+<!-- ============================================================ -->
+<h2 id="exercises"><span class="sec-num">&#x270E;</span>Exercises</h2>
+
+<div class="exercise">
+  <div class="tier core">Core · local CPU code (pytest)</div>
+  <h4>Implement <code>python_math_drills.py</code></h4>
+  <p>Open <a href="../exercises/python_math_drills.py"><code>python_math_drills.py</code></a> and implement <code>mean</code>, <code>weighted_average</code>, <code>variance</code>, <code>min_max_scale</code>, <code>predict_line</code>, and <code>column_sums</code> without mutating inputs. Answer the three <em>Say it out loud</em> prompts at the top of the file, then run:</p>
+  <pre class="plain"><code>python3 -m pytest -k python_math_drills</code></pre>
+</div>
+
 <nav class="chapter-nav">
-  <a href="python-refresher-and-idioms.html"><small>← Previous</small>Python refresher &amp; everyday idioms</a>
-  <a class="next" href="classes-dunders-and-batches.html"><small>Next →</small>Classes, magic methods &amp; batched generators for ML</a>
+  <a href="python-refresher-and-idioms.html"><small>&#x2190; Previous</small>Python refresher &amp; everyday idioms</a>
+  <a class="next" href="classes-dunders-and-batches.html"><small>Next &#x2192;</small>Classes, magic methods &amp; batched generators for ML</a>
 </nav>
 
 </main>
 <script>
-document.querySelectorAll("[data-copy]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const txt = btn.getAttribute("data-copy");
-    const done = () => { const o = btn.textContent; btn.textContent = "Copied"; setTimeout(() => (btn.textContent = o), 1400); };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done);
-    else { const ta = document.createElement("textarea"); ta.value = txt; document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); done(); }
+(function () {
+  const host = document.getElementById("viz-predict-line");
+  if (!host || !window.V) return;
+
+  const XS = [0, 1, 2, 3];
+  const PRESETS = [
+    { key: "default", label: "Default (w=10, b=50)", w: 10.0, b: 50.0 },
+    { key: "flat", label: "Flat (w=0, b=50)", w: 0.0, b: 50.0 },
+    { key: "neg", label: "Negative (w=-10, b=80)", w: -10.0, b: 80.0 },
+  ];
+  let w = 10.0;
+  let b = 50.0;
+
+  const presetRow = V.el("div", { style: "display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px" });
+  const sliderRow = V.el("div", { style: "display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:12px" });
+  const wVal = V.el("b", { style: "min-width:3.4em;text-align:right;font-family:var(--mono)" }, "10.0");
+  const bVal = V.el("b", { style: "min-width:3.4em;text-align:right;font-family:var(--mono)" }, "50.0");
+  const wInput = V.el("input", {
+    type: "range", min: "-15", max: "15", step: "5", value: "10",
+    "aria-label": "Slope w",
+    style: "flex:1;min-width:80px;accent-color:var(--accent)"
   });
-});
+  const bInput = V.el("input", {
+    type: "range", min: "20", max: "80", step: "10", value: "50",
+    "aria-label": "Offset b",
+    style: "flex:1;min-width:80px;accent-color:var(--accent-2)"
+  });
+  sliderRow.append(
+    V.el("label", { class: "small", style: "display:flex;align-items:center;gap:8px;flex:1 1 220px;min-width:0" }, "Slope w:", wInput, wVal),
+    V.el("label", { class: "small", style: "display:flex;align-items:center;gap:8px;flex:1 1 220px;min-width:0" }, "Offset b:", bInput, bVal)
+  );
+
+  const stage = V.el("div", { class: "viz-stage" });
+  host.append(presetRow, sliderRow, stage);
+
+  const X0 = 64, X1 = 594, Y0 = 20, Y1 = 176;
+  const mapX = (x) => X0 + ((x - (-0.3)) / 3.6) * (X1 - X0);
+  const mapY = (y) => Y1 - ((y - (-35)) / 170) * (Y1 - Y0);
+
+  function fmt(n) {
+    const clean = Object.is(n, -0) ? 0 : n;
+    return Number.isInteger(clean) ? clean.toFixed(1) : String(clean);
+  }
+
+  function paint() {
+    presetRow.replaceChildren(...PRESETS.map((p) => {
+      const on = Math.abs(w - p.w) < 1e-9 && Math.abs(b - p.b) < 1e-9;
+      return V.el("button", {
+        type: "button",
+        class: "btn",
+        "aria-pressed": String(on),
+        onclick: () => { w = p.w; b = p.b; wInput.value = String(w); bInput.value = String(b); paint(); }
+      }, p.label);
+    }));
+
+    wVal.textContent = fmt(w);
+    bVal.textContent = fmt(b);
+    const ys = XS.map((x) => w * x + b);
+
+    const svg = V.s("svg", {
+      class: "viz", viewBox: "0 0 640 212", role: "img",
+      "aria-label": `Line y = ${fmt(w)} * x + ${fmt(b)} evaluated at study hours 0, 1, 2, 3`
+    });
+
+    for (const yTick of [-25, 0, 25, 50, 75, 100, 125]) {
+      const py = mapY(yTick);
+      svg.append(
+        V.s("line", {
+          x1: X0, y1: py, x2: X1, y2: py,
+          stroke: yTick === 0 ? "var(--border-strong)" : "var(--border)",
+          "stroke-width": yTick === 0 ? "1.6" : "1",
+          "stroke-dasharray": yTick === 0 ? null : "3 4"
+        }),
+        V.s("text", { x: X0 - 10, y: py + 4, "text-anchor": "end", "font-size": "12", fill: "var(--muted)" }, String(yTick))
+      );
+    }
+    for (const xTick of XS) {
+      const px = mapX(xTick);
+      svg.append(
+        V.s("line", { x1: px, y1: Y0, x2: px, y2: Y1, stroke: "var(--border)", "stroke-dasharray": "3 4" }),
+        V.s("text", { x: px, y: Y1 + 20, "text-anchor": "middle", "font-size": "12", fill: "var(--muted)" }, `h=${xTick}`)
+      );
+    }
+    const lx0 = -0.25, lx1 = 3.25;
+    const clampY = (y) => Math.max(-35, Math.min(135, y));
+    svg.append(V.s("line", {
+      x1: mapX(lx0), y1: mapY(clampY(w * lx0 + b)),
+      x2: mapX(lx1), y2: mapY(clampY(w * lx1 + b)),
+      stroke: "var(--accent)", "stroke-width": "2.6"
+    }));
+    svg.append(V.s("circle", { cx: mapX(0), cy: mapY(b), r: "8.5", fill: "none", stroke: "var(--accent-2)", "stroke-width": "1.8" }));
+    XS.forEach((x, idx) => {
+      const px = mapX(x), py = mapY(ys[idx]);
+      const dy = py < 46 ? 20 : -12;
+      svg.append(
+        V.s("circle", { cx: px, cy: py, r: "5.5", fill: "var(--ok)", stroke: "var(--surface)", "stroke-width": "1.6" }),
+        V.s("text", { x: px, y: py + dy, "text-anchor": "middle", "font-size": "12", "font-weight": "700", fill: "var(--text-strong)" }, fmt(ys[idx]))
+      );
+    });
+
+    const note = Math.abs(w) < 1e-9
+      ? `w = 0.0: zero tilt — every study hour predicts the flat baseline b = ${fmt(b)}.`
+      : (w > 0 ? `Each +1 study hour raises score by +${fmt(w)}; at 0 hours, score starts at b = ${fmt(b)}.`
+               : `Negative slope: each +1 step drops y by ${fmt(Math.abs(w))}; at 0 hours, score starts at b = ${fmt(b)}.`);
+
+    stage.replaceChildren(
+      svg,
+      V.el("div", { class: "small", style: "display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)" },
+        V.el("code", { style: "overflow-wrap:anywhere" }, `[${fmt(w)} * h + ${fmt(b)} for h in [0, 1, 2, 3]]`),
+        V.el("span", { style: "color:var(--ok);font-family:var(--mono);font-weight:700" }, `-> [${ys.map(fmt).join(", ")}]`)
+      ),
+      V.el("div", { class: "small muted", style: "margin-top:6px" }, note)
+    );
+  }
+
+  wInput.addEventListener("input", () => { w = Number(wInput.value); paint(); });
+  bInput.addEventListener("input", () => { b = Number(bInput.value); paint(); });
+  paint();
+})();
+
+(function () {
+  const host = document.getElementById("viz-grid-sums");
+  if (!host || !window.V) return;
+
+  const GRID = [
+    [70, 80, 90],
+    [75, 85, 95],
+  ];
+  const R = GRID.length;
+  const C = GRID[0].length;
+
+  function buildFrames(mode) {
+    const frames = [];
+    if (mode === "col") {
+      const out = Array(C).fill(null);
+      frames.push({
+        mode, active: null, sweep: [], doneCols: [], doneRows: [],
+        out: [...out], justWrote: null,
+        expr: "gradebook = [[70, 80, 90], [75, 85, 95]]  # 2 rows x 3 cols",
+        msg: "<b>Column sums (down &#x2193;):</b> Fix column <code>c</code>, walk down every student row <code>r</code>, and collect <b>3 totals</b> (one per assignment — NumPy <code>axis=0</code>)."
+      });
+      const doneCols = [];
+      for (let c = 0; c < C; c++) {
+        let total = 0;
+        const sweep = [];
+        for (let r = 0; r < R; r++) {
+          const val = GRID[r][c];
+          const prev = total;
+          total += val;
+          sweep.push(`${r},${c}`);
+          const isLast = r === R - 1;
+          if (isLast) {
+            out[c] = total;
+            doneCols.push(c);
+          }
+          frames.push({
+            mode, active: `${r},${c}`, sweep: [...sweep],
+            doneCols: [...doneCols], doneRows: [],
+            out: [...out], justWrote: isLast ? c : null,
+            expr: isLast
+              ? `gradebook[${r}][${c}] == ${val}  ->  col ${c}: ${prev} + ${val} = ${total}`
+              : `gradebook[${r}][${c}] == ${val}  ->  col ${c} running = ${total}`,
+            msg: isLast
+              ? `Finish column <b>c = ${c}</b> at <code>gradebook[${r}][${c}] = ${val}</code>. Write <b>${total}</b> into <code>col_totals[${c}]</code>.`
+              : `Start column <b>c = ${c}</b> at <code>gradebook[${r}][${c}] = ${val}</code> (row ${r}, col ${c}). Running sum = <b>${total}</b>.`
+          });
+        }
+      }
+      frames.push({
+        mode, active: null, sweep: [], doneCols: [0, 1, 2], doneRows: [],
+        out: [...out], justWrote: null,
+        expr: "col_totals -> [145.0, 165.0, 185.0]",
+        msg: "<b>Done!</b> Collapsing down the 2 student rows yields <b>3 column totals</b>: <code>[145.0, 165.0, 185.0]</code> (what NumPy calls <code>grid.sum(axis=0)</code>)."
+      });
+    } else {
+      const out = Array(R).fill(null);
+      frames.push({
+        mode, active: null, sweep: [], doneCols: [], doneRows: [],
+        out: [...out], justWrote: null,
+        expr: "gradebook = [[70, 80, 90], [75, 85, 95]]  # 2 rows x 3 cols",
+        msg: "<b>Row sums (across &#x2192;):</b> Fix student row <code>r</code>, walk across every column <code>c</code>, and collect <b>2 totals</b> (one per student — NumPy <code>axis=1</code>)."
+      });
+      const doneRows = [];
+      for (let r = 0; r < R; r++) {
+        let total = 0;
+        const sweep = [];
+        for (let c = 0; c < C; c++) {
+          const val = GRID[r][c];
+          const prev = total;
+          total += val;
+          sweep.push(`${r},${c}`);
+          const isLast = c === C - 1;
+          if (isLast) {
+            out[r] = total;
+            doneRows.push(r);
+          }
+          frames.push({
+            mode, active: `${r},${c}`, sweep: [...sweep],
+            doneCols: [], doneRows: [...doneRows],
+            out: [...out], justWrote: isLast ? r : null,
+            expr: isLast
+              ? `gradebook[${r}][${c}] == ${val}  ->  row ${r}: ${prev} + ${val} = ${total}`
+              : `gradebook[${r}][${c}] == ${val}  ->  row ${r} running = ${prev} + ${val} = ${total}`,
+            msg: isLast
+              ? `Finish row <b>r = ${r}</b> at <code>gradebook[${r}][${c}] = ${val}</code>. Write <b>${total}</b> into <code>row_totals[${r}]</code>.`
+              : `Walk across row <b>r = ${r}</b> to <code>gradebook[${r}][${c}] = ${val}</code>. Running sum = <b>${total}</b>.`
+          });
+        }
+      }
+      frames.push({
+        mode, active: null, sweep: [], doneCols: [], doneRows: [0, 1],
+        out: [...out], justWrote: null,
+        expr: "row_totals -> [240.0, 255.0]",
+        msg: "<b>Done!</b> Collapsing across the 3 assignments yields <b>2 row totals</b>: <code>[240.0, 255.0]</code> (what NumPy calls <code>grid.sum(axis=1)</code>)."
+      });
+    }
+    return frames;
+  }
+
+  function cellStyle(state) {
+    const base = "display:flex;flex-direction:column;align-items:center;justify-content:center;height:48px;border-radius:7px;font-family:var(--mono);transition:background 0.15s,border-color 0.15s;";
+    if (state === "cur") return base + "background:var(--accent);border:1.5px solid var(--accent);color:var(--on-accent);font-weight:700;";
+    if (state === "sweep") return base + "background:var(--warn-soft);border:1.5px solid var(--warn);color:var(--text-strong);font-weight:600;";
+    if (state === "done") return base + "background:var(--ok-soft);border:1.5px solid var(--ok);color:var(--text-strong);font-weight:600;";
+    return base + "background:var(--surface);border:1px solid var(--border-strong);color:var(--text-strong);";
+  }
+
+  function draw(f, stage) {
+    const gridEl = V.el("div", {
+      role: "group",
+      "aria-label": "2 by 3 gradebook grid values and coordinates",
+      style: "display:grid;grid-template-columns:30px repeat(3,56px);gap:5px;align-items:center;font-family:var(--mono);flex:none"
+    });
+    const hdrStyle = "text-align:center;font-size:0.74rem;font-weight:600;color:var(--accent)";
+    gridEl.append(V.el("div", {}));
+    for (let c = 0; c < C; c++) gridEl.append(V.el("div", { style: hdrStyle }, `c${c}`));
+
+    for (let r = 0; r < R; r++) {
+      gridEl.append(V.el("div", { style: hdrStyle }, `r${r}`));
+      for (let c = 0; c < C; c++) {
+        const key = `${r},${c}`;
+        let state = "idle";
+        if (f.active === key) state = "cur";
+        else if (f.sweep.includes(key)) state = "sweep";
+        else if (f.doneCols.includes(c) || f.doneRows.includes(r)) state = "done";
+        gridEl.append(V.el("div", {
+          style: cellStyle(state),
+          title: `gradebook[${r}][${c}] = ${GRID[r][c]}`
+        },
+          V.el("span", { style: "font-size:0.95rem;line-height:1.15" }, String(GRID[r][c])),
+          V.el("span", { style: "font-size:0.70rem;line-height:1.1" }, `(${r},${c})`)
+        ));
+      }
+    }
+
+    const outPtrs = f.justWrote != null ? { [f.justWrote]: `out[${f.justWrote}]` } : {};
+    const outCells = V.cells(f.out, {
+      idx: true,
+      ptrs: outPtrs,
+      cls: (idx, v) => idx === f.justWrote ? "hl" : (v != null ? "done" : "")
+    });
+
+    const right = V.el("div", { style: "flex:1 1 210px;min-width:0;display:flex;flex-direction:column;gap:10px" },
+      V.el("div", { style: "padding:8px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--border);font-family:var(--mono);font-size:0.80rem;color:var(--text-strong);overflow-wrap:anywhere" }, f.expr),
+      V.el("div", {},
+        V.el("div", { class: "small muted", style: "margin-bottom:10px" },
+          f.mode === "col" ? "Output list — 3 column totals (axis=0):" : "Output list — 2 row totals (axis=1):"),
+        outCells
+      )
+    );
+
+    stage.append(V.el("div", { style: "display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start" }, gridEl, right));
+  }
+
+  let mode = "col";
+  const btnCol = V.el("button", { type: "button", class: "btn", "aria-pressed": "true" }, "Column sums \u2193");
+  const btnRow = V.el("button", { type: "button", class: "btn", "aria-pressed": "false" }, "Row sums \u2192");
+
+  const api = V.player(host, {
+    frames: buildFrames("col"),
+    draw,
+    speed: 850,
+    extraControls: [btnCol, btnRow],
+  });
+
+  function switchMode(nextMode) {
+    mode = nextMode;
+    btnCol.setAttribute("aria-pressed", String(mode === "col"));
+    btnRow.setAttribute("aria-pressed", String(mode === "row"));
+    api.load(buildFrames(mode));
+  }
+  btnCol.addEventListener("click", () => switchMode("col"));
+  btnRow.addEventListener("click", () => switchMode("row"));
+})();
 </script>
 </body>
 </html>
