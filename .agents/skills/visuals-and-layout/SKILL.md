@@ -19,9 +19,9 @@ Visuals in `gpu/lab` are **not decoration** — they are the primary way a learn
    - Leave **at most 2 consecutive numbered `h2` sections** without a visual (`.figure`, `<svg>`, or `pre.diagram`).
 3. **Every `.figure` needs a directive `.cap`:** Tell the reader *what to press or compare* and *what surprising behavior to notice* — never a generic label like "Figure 1: Diagram of X".
 
-## 2. Using `assets/viz.js` (`window.V`)
+## 2. Using `book/assets/viz.js` (`window.V`)
 
-Everything runs offline with zero external libraries. Available primitives in `assets/viz.js`:
+Everything runs offline with zero external libraries. Available primitives in `book/assets/viz.js`:
 
 | Helper | Purpose |
 |---|---|

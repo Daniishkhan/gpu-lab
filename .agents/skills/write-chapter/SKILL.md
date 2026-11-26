@@ -12,7 +12,7 @@ Before writing any HTML, read [`references/html-components.md`](references/html-
 ## Phase 1: Grounding & Prerequisite Audit (Mandatory)
 
 1. **Read `curriculum.json`** for the target topic's `id`, `tag`, `short`, `text`, `requires`, stage position, and linked exercises or GPU labs.
-2. **Read the immediately preceding chapter(s)** listed in `requires` (and `reference-cheatsheet.html` if touching Gemma 4, LoRA, serving, or voice specs) so analogies, notation, and numbers stay 100% consistent across the book.
+2. **Read the immediately preceding chapter(s)** listed in `requires` (and `book/reference-cheatsheet.html` if touching Gemma 4, LoRA, serving, or voice specs) so analogies, notation, and numbers stay 100% consistent across the book.
 3. **Lock the prerequisite boundary:** Never lean on a concept, term, or equation introduced later in the spine. If a forward pointer helps motivation ("in Stage 4 we'll compress this to 4-bit"), label it clearly as a preview and never depend on it for understanding today's mechanism.
 
 ## Phase 2: Blueprint Before HTML

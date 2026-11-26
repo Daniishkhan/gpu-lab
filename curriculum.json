@@ -217,7 +217,7 @@
           {
             "topic": "03.04",
             "gpu": "1× L4 24GB (~$0.70/hr)",
-            "lab": "labs/01-gemma4-first-inference.md",
+            "lab": "gpu-labs/01-gemma4-first-inference/README.md",
             "do": "Map your toy GPT onto Gemma 4's 4 real architectures (GQA, PLE E2B/E4B, encoder-free 12B, 128-expert MoE 26B-A4B, dense 31B, MTP drafters, base vs. -it) and run your first cloud L4 profile."
           }
         ],
@@ -259,7 +259,7 @@
           {
             "topic": "04.05",
             "gpu": "1× L4 24GB (~$0.70/hr)",
-            "lab": "labs/02-gemma4-qlora-sft.md",
+            "lab": "gpu-labs/02-gemma4-qlora-sft/README.md",
             "do": "Run real Gemma 4 E4B/12B SFT with TRL + PEFT (and Unsloth), navigating Gemma 4 gotchas (ClippableLinear, use_cache, bf16 vs. NF4, ZeRO-3 bug), reading loss curves, and preventing forgetting."
           },
           {
@@ -332,7 +332,7 @@
           {
             "topic": "06.04",
             "gpu": "1× L4 24GB (~$0.70/hr)",
-            "lab": "labs/03-qwen3-tts-voice-clone.md",
+            "lab": "gpu-labs/03-qwen3-tts-voice-clone/README.md",
             "do": "Clean consented speaker audio (VAD, SNR, dereverb, alignment), compare 3-second zero-shot cloning vs. speaker LoRA fine-tuning on Qwen3-TTS (Apache 2.0), Chatterbox-Turbo (MIT), and Orpheus TTS."
           },
           {
@@ -374,7 +374,7 @@
           {
             "topic": "07.04",
             "gpu": "1× L40S / 2× L4",
-            "lab": "labs/04-voice-agent-phone-loop.md",
+            "lab": "gpu-labs/04-voice-agent-phone-loop/README.md",
             "do": "Fine-tune Gemma 4 for spoken register (short interrupt-safe turns, zero markdown, mid-call tools) and wire STT → vLLM Gemma 4 → cloned TTS in Pipecat or LiveKit Agents onto live SIP/Twilio phone calls."
           },
           {

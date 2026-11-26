@@ -66,9 +66,9 @@ def main() -> int:
     ap.add_argument("--fail", dest="failing", type=Path, action="append", default=[], help="solution that must fail")
     args = ap.parse_args()
 
-    stubs = list(ROOT.glob(f"sections/*/exercises/{args.module}.py"))
+    stubs = list(ROOT.glob(f"exercises/*/{args.module}.py"))
     if len(stubs) != 1:
-        sys.exit(f"Expected one sections/*/exercises/{args.module}.py, found {len(stubs)}.")
+        sys.exit(f"Expected one exercises/*/{args.module}.py, found {len(stubs)}.")
     stub = stubs[0]
     if not (stub.parent / f"test_{args.module}.py").exists():
         sys.exit(f"No test_{args.module}.py next to {stub.relative_to(ROOT)}.")

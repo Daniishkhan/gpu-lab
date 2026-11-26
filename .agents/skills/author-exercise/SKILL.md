@@ -5,18 +5,18 @@ description: Design and verify a zero-GPU pure-Python/NumPy first-principles CPU
 
 # Author a Zero-GPU First-Principles Exercise (`gpu/lab`)
 
-Every CPU exercise in `sections/<NN>/exercises/` proves **one concrete engineering invariant** locally in pure Python or NumPy (zero GPU, zero cloud spend, zero external downloads) before a learner ever imports a high-level wrapper or rents a GPU pod.
+Every CPU exercise in `exercises/<NN>-<slug>/` proves **one concrete engineering invariant** locally in pure Python or NumPy (zero GPU, zero cloud spend, zero external downloads) before a learner ever imports a high-level wrapper or rents a GPU pod.
 
 ## 1. Ground & Scaffold
 
-1. Read `curriculum.json` and the matching chapter (`sections/<NN>/concepts/*.html`) so function names, units (`bytes` vs `GB`, `ms` vs `s`), tensor shapes, and mental models match the chapter 1-to-1.
-2. Pick a **repo-wide unique module name** (no `__init__.py` exists under `sections/`).
+1. Read `curriculum.json` and the matching chapter (`book/sections/<NN>-<slug>/concepts/*.html`) so function names, units (`bytes` vs `GB`, `ms` vs `s`), tensor shapes, and mental models match the chapter 1-to-1.
+2. Pick a **repo-wide unique module name** (no `__init__.py` exists under `exercises/`).
 3. Scaffold with:
    ```bash
    python3 tools/new.py exercise <TOPIC_ID> <module_name> "<Concise Title>"
    ```
 
-## 2. Stub Design Contract (`sections/<NN>/exercises/<module>.py`)
+## 2. Stub Design Contract (`exercises/<NN>-<slug>/<module>.py`)
 
 - **Header docstring:** Include `Topic: XX.YY` (or `Topic: XX.YY, XX.ZZ` if spanning two topics — `tools/build.py` parses this line!), a plain-English description of the physical/engineering invariant being verified, and a **"Say it out loud:"** block with 2–4 conceptual prediction questions.
 - **Small, composable functions (3–5 functions):** Progress from the atomic primitive (e.g., `dot_product`, `matmul_flops`, `mask_single_turn`) up to the real systems calculation (e.g., `batched_linear`, `classify_workload`, `mask_conversation`).
@@ -27,7 +27,7 @@ Every CPU exercise in `sections/<NN>/exercises/` proves **one concrete engineeri
   - exact `ValueError` conditions (e.g., dimensions `<= 0`, mismatched inner shapes, empty inputs).
 - **Hard no-solution rule:** Every function body in the repo stub **must** raise `NotImplementedError`. Never leave commented-out solution code or drop-in snippets in the stub.
 
-## 3. Adversarial Test Suite (`sections/<NN>/exercises/test_<module>.py`)
+## 3. Adversarial Test Suite (`exercises/<NN>-<slug>/test_<module>.py`)
 
 Design `test_<module>.py` so a passing implementation is genuinely right — not just lucky on one happy path:
 1. **Hand-traceable tiny cases:** 2–4 element inputs whose expected outputs a learner can verify on paper in 30 seconds.
@@ -52,4 +52,4 @@ Never put reference solutions inside the repo. Verify your tests prove what they
    - Every `--pass` reference **passes** 100%.
    - Every `--fail` buggy implementation **fails** at least one test.
 4. **Delete** `/tmp/gpu-lab-check-<module>/` immediately afterward.
-5. Run `python3 tools/build.py` and verify the new exercise appears cleanly on the subject page and in `assets/curriculum.js`.
+5. Run `python3 tools/check_stubs.py` and `python3 tools/build.py` and verify the new exercise appears cleanly on the subject page and in `book/assets/curriculum.js`.

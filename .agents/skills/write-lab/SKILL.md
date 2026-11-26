@@ -1,16 +1,16 @@
 ---
 name: write-lab
-description: Author or update a reproducible cloud GPU lab runbook in labs/*.md with CPU pre-flight checks, pinned versions, VRAM/cost estimates, production gotchas, and pod teardown steps.
+description: Author or update a reproducible cloud GPU lab runbook in gpu-labs/<NN>-<slug>/README.md with CPU pre-flight checks, pinned versions, VRAM/cost estimates, production gotchas, and pod teardown steps.
 ---
 
 # Write a Cloud GPU Lab Runbook (`gpu/lab`)
 
-Cloud GPU labs in `labs/*.md` bridge the gap between local CPU toy builds and real open-weight systems without burning money on trivial bugs. Every runbook must be reproducible, cost-aware, and tied directly back to first-principles predictions from the book.
+Cloud GPU labs in `gpu-labs/<NN>-<slug>/README.md` bridge the gap between local CPU toy builds and real open-weight systems without burning money on trivial bugs. Every runbook must be reproducible, cost-aware, and tied directly back to first-principles predictions from the book.
 
 ## 1. Ground & Scaffold
 
-1. Check `curriculum.json`, `labs/README.md`, and `reference-cheatsheet.html` for the target stage, topic ID(s), linked CPU exercises, and canonical GPU sizing.
-2. Scaffold with `python3 tools/new.py runbook "<Runbook Title>"` (or create the next numbered `labs/NN-slug.md` for a core spine lab and register it in `labs/README.md` + `curriculum.json` if it is a core stage lab).
+1. Check `curriculum.json`, `gpu-labs/README.md`, and `book/reference-cheatsheet.html` for the target stage, topic ID(s), linked CPU exercises, and canonical GPU sizing.
+2. Scaffold with `python3 tools/new.py runbook "<Runbook Title>"` (or create the next numbered `gpu-labs/<NN>-<slug>/README.md` for a core spine lab and register it in `gpu-labs/README.md` + `curriculum.json`).
 
 ## 2. Mandatory Runbook Structure
 
@@ -39,5 +39,5 @@ Every runbook must contain these six sections:
 ## 3. Quality Gate
 
 - Verify all arithmetic (VRAM estimates, runtime × hourly rate = cost, sample rates, latency targets) using `python3`.
-- Cross-check all model IDs, special tokens, and library flags against `reference-cheatsheet.html` and official docs.
-- Confirm `labs/README.md` lists the runbook if it is part of the main sequence.
+- Cross-check all model IDs, special tokens, and library flags against `book/reference-cheatsheet.html` and official docs.
+- Confirm `gpu-labs/README.md` lists the runbook if it is part of the main sequence.

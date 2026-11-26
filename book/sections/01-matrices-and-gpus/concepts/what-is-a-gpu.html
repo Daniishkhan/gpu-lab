@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="topic" content="01.04">
+  <title>What Is a GPU and Why Do We Need One?</title>
+  <script>try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("gpu-lab:theme")) || "dark"; } catch (e) {}</script>
+  <link rel="stylesheet" href="../../../assets/style.css">
+  <script src="../../../assets/curriculum.js"></script>
+  <script src="../../../assets/viz.js"></script>
+  <script src="../../../assets/shell.js"></script>
+  <script src="../../../assets/book.js"></script>
+</head>
+<body data-root="../../.." data-section="01" data-page="concept">
+<main class="content book">
+
+<header class="chapter-head">
+  <div class="eyebrow">Phase 0B · Subject 01 · Vectors, Matrices, NumPy &amp; GPU Hardware</div>
+  <h1>What Is a GPU and Why Do We Need One?</h1>
+  <div class="meta"><span><span class="badge P0">P0</span> Core hardware intuition</span><span>about 15 minutes</span><span>6 quick checks · 1 CPU exercise</span></div>
+</header>
+
+<p>Everyone says "you need a GPU for AI," then treats the GPU like a magic fast box. Once you see what a GPU physically is — and the one brutal bottleneck that controls its speed — every mysterious ML fact suddenly clicks: why training needs huge batches, why generating text one word at a time barely uses a GPU's math power, why 4-bit quantization speeds up replies, and why a Mixture-of-Experts model like Gemma 4 <code>26B-A4B</code> talks as fast as a 4B model.</p>
+
+<div class="learn-list">
+  <h4>By the end you'll be able to</h4>
+  <ol>
+    <li>Explain the physical difference between a CPU and a GPU using one kitchen picture.</li>
+    <li>Calculate how many math operations one matrix multiply costs — and why it breaks a CPU.</li>
+    <li>Separate a GPU's two completely different speed limits: <b>cooking speed (compute)</b> vs. <b>hallway speed (memory bandwidth)</b>.</li>
+    <li>Predict whether any AI workload (training, prompt prefill, or token-by-token decode) is limited by math or by moving bytes.</li>
+  </ol>
+</div>
+
+<p class="muted small">How to read this: top to bottom, answering every quick check before moving on. Builds on <a href="matrix-multiply-and-shapes.html">Matrix multiplication &amp; tensor shapes</a> and <a href="everyday-numpy-for-ml.html">Everyday NumPy: slicing, axis, broadcasting &amp; masks</a>.</p>
+
+<!-- ============================================================ -->
+<h2 id="s1"><span class="sec-num">1</span>Why does one single LLM layer crush a laptop CPU?</h2>
+
+<div class="story">
+  <p>In the last chapter, you saw that one neural-network layer is just a matrix multiply: <code>output = input @ weights</code>.</p>
+  <p>Now plug in real numbers. Suppose a single layer has a <code>4,096 × 4,096</code> weight matrix, and you feed in a prompt of <code>4,096</code> tokens. Every output number needs <code>4,096</code> multiplies and <code>4,096</code> adds — and there are <code>4,096 × 4,096</code> output numbers. Total math operations: <code>2 × 4,096³ ≈ <b>137 billion</b></code> operations — for <b>one single layer</b> (a real model has 30 to 60 layers!).</p>
+  <p>In plain Python loops, 137 billion operations takes <b>hours</b>. Even on an 8-core compiled C++ CPU, it takes a noticeable fraction of a second per layer. On one NVIDIA H100 GPU, those exact same 137 billion operations finish in <b>0.14 milliseconds</b>.</p>
+</div>
+
+<p>How can one chip beat a modern CPU by 100× to 1,000× on the exact same math? Not because GPU cores are individually faster — each tiny GPU math unit is actually <em>slower</em> and dumber than a CPU core! The secret is how silicon area is spent.</p>
+
+<div class="figure">
+  <svg class="viz" viewBox="0 0 720 220" role="img" aria-label="Comparing a CPU with few large versatile cores and huge caches against a GPU with thousands of tiny parallel math cores and wide VRAM bandwidth">
+    <rect x="14" y="14" width="334" height="192" rx="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.6"/>
+    <text x="181" y="38" class="label" text-anchor="middle" font-weight="700" fill="var(--warn)">CPU — 8 Michelin-Star Chefs</text>
+    <text x="181" y="55" class="label" text-anchor="middle" fill="var(--muted)" font-size="11">Huge control logic &amp; caches · fast on tricky branching</text>
+    <rect x="34" y="70" width="66" height="44" rx="6" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.5"/>
+    <text x="67" y="96" class="label" text-anchor="middle" font-size="11">Chef 1</text>
+    <rect x="108" y="70" width="66" height="44" rx="6" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.5"/>
+    <text x="141" y="96" class="label" text-anchor="middle" font-size="11">Chef 2</text>
+    <rect x="182" y="70" width="66" height="44" rx="6" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.5"/>
+    <text x="215" y="96" class="label" text-anchor="middle" font-size="11">Chef 3</text>
+    <rect x="256" y="70" width="66" height="44" rx="6" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.5"/>
+    <text x="289" y="96" class="label" text-anchor="middle" font-size="11">Chef 4</text>
+    <rect x="34" y="124" width="288" height="32" rx="6" fill="var(--surface-2)" stroke="var(--border-strong)"/>
+    <text x="178" y="144" class="label" text-anchor="middle" fill="var(--muted)" font-size="11">Giant branch predictors + L1/L2/L3 caches</text>
+    <text x="181" y="182" class="label" text-anchor="middle" fill="var(--warn)" font-size="11">System RAM highway: ~50–100 GB/s</text>
+
+    <rect x="372" y="14" width="334" height="192" rx="10" fill="var(--surface)" stroke="var(--ok)" stroke-width="1.8"/>
+    <text x="539" y="38" class="label" text-anchor="middle" font-weight="700" fill="var(--ok)">GPU — 10,000 Prep Cooks in Lockstep</text>
+    <text x="539" y="55" class="label" text-anchor="middle" fill="var(--muted)" font-size="11">Tiny simple cores + tensor matrix tiles · built for identical ops</text>
+    <g fill="color-mix(in srgb, var(--ok) 24%, var(--surface))" stroke="var(--ok)" stroke-width="1">
+      <rect x="392" y="70" width="18" height="16" rx="2"/><rect x="414" y="70" width="18" height="16" rx="2"/><rect x="436" y="70" width="18" height="16" rx="2"/><rect x="458" y="70" width="18" height="16" rx="2"/><rect x="480" y="70" width="18" height="16" rx="2"/><rect x="502" y="70" width="18" height="16" rx="2"/><rect x="524" y="70" width="18" height="16" rx="2"/><rect x="546" y="70" width="18" height="16" rx="2"/><rect x="568" y="70" width="18" height="16" rx="2"/><rect x="590" y="70" width="18" height="16" rx="2"/><rect x="612" y="70" width="18" height="16" rx="2"/><rect x="634" y="70" width="18" height="16" rx="2"/><rect x="656" y="70" width="18" height="16" rx="2"/>
+      <rect x="392" y="91" width="18" height="16" rx="2"/><rect x="414" y="91" width="18" height="16" rx="2"/><rect x="436" y="91" width="18" height="16" rx="2"/><rect x="458" y="91" width="18" height="16" rx="2"/><rect x="480" y="91" width="18" height="16" rx="2"/><rect x="502" y="91" width="18" height="16" rx="2"/><rect x="524" y="91" width="18" height="16" rx="2"/><rect x="546" y="91" width="18" height="16" rx="2"/><rect x="568" y="91" width="18" height="16" rx="2"/><rect x="590" y="91" width="18" height="16" rx="2"/><rect x="612" y="91" width="18" height="16" rx="2"/><rect x="634" y="91" width="18" height="16" rx="2"/><rect x="656" y="91" width="18" height="16" rx="2"/>
+      <rect x="392" y="112" width="18" height="16" rx="2"/><rect x="414" y="112" width="18" height="16" rx="2"/><rect x="436" y="112" width="18" height="16" rx="2"/><rect x="458" y="112" width="18" height="16" rx="2"/><rect x="480" y="112" width="18" height="16" rx="2"/><rect x="502" y="112" width="18" height="16" rx="2"/><rect x="524" y="112" width="18" height="16" rx="2"/><rect x="546" y="112" width="18" height="16" rx="2"/><rect x="568" y="112" width="18" height="16" rx="2"/><rect x="590" y="112" width="18" height="16" rx="2"/><rect x="612" y="112" width="18" height="16" rx="2"/><rect x="634" y="112" width="18" height="16" rx="2"/><rect x="656" y="112" width="18" height="16" rx="2"/>
+    </g>
+    <rect x="392" y="138" width="282" height="22" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/>
+    <text x="533" y="153" class="label" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="700">Dedicated Matrix Tiles (Tensor Cores)</text>
+    <text x="539" y="182" class="label" text-anchor="middle" fill="var(--ok)" font-weight="700" font-size="11">VRAM highway: 300 – 3,350 GB/s!</text>
+  </svg>
+  <div class="cap">A CPU minimizes time for <b>one</b> tricky task with lots of <code>if/else</code> branches. A GPU maximizes total throughput across <b>millions of identical math ops</b> at once.</div>
+</div>
+
+<p>Carry this single physical picture through the rest of the chapter: a <b>CPU</b> is 8 Michelin-star chefs who can improvise complex French recipes with lots of branching decisions, while a <b>GPU</b> is a stadium kitchen with <b>10,000 prep cooks</b> who all make the exact same knife chop on the exact same beat. Give them 100,000 carrots to slice — identical independent work — and the 10,000 prep cooks obliterate the 8 master chefs.</p>
+
+<p><em>Where the kitchen analogy breaks:</em> human cooks bump elbows and need room; GPU cores execute identical instructions in synchronized squads (called <b>warps</b> of 32 threads) and modern AI GPUs even have special welded chopping blocks (<b>Tensor Cores</b>) that multiply whole small matrices in a single clock tick.</p>
+
+<!-- ============================================================ -->
+<h2 id="s2"><span class="sec-num">2</span>Why does matrix multiplication love 10,000 prep cooks?</h2>
+
+<p>Look at any cell <code>C[i, j]</code> in a matrix product <code>C = A @ B</code>. It is the dot product of row <code>i</code> of <code>A</code> with column <code>j</code> of <code>B</code>. Notice what it does <em>not</em> depend on: it never waits for <code>C[i, j-1]</code> or <code>C[i-1, j]</code>!</p>
+
+<pre class="diagram"><code>Every output cell is 100% independent — zero waiting on neighbors:
+
+C[0,0] = dot(A[0,:], B[:,0])  ← Cook #1
+C[0,1] = dot(A[0,:], B[:,1])  ← Cook #2    all run on the
+C[0,2] = dot(A[0,:], B[:,2])  ← Cook #3    EXACT SAME TICK
+  ...
+C[4095,4095]                  ← Cook #10,000+</code></pre>
+
+<p>And the same trick holds for almost every step in an LLM: multiplying inputs by weights, applying activations (ReLU/SwiGLU) to every number, computing attention scores across tokens, and nudging millions of weights during backpropagation. Originally built to shade millions of independent screen pixels for video games, GPUs turned out to be the perfect matrix-multiply engine.</p>
+
+<div class="check" id="check-parallel">
+  <p class="q">Which of these two tasks will see a massive speedup on a GPU vs. a CPU?</p>
+  <div class="opts">
+    <button>Walking a linked list of 10 million nodes one pointer at a time (each step depends on the previous pointer)</button>
+    <button data-correct>Multiplying a (1024, 4096) batch of token vectors by a (4096, 4096) weight matrix</button>
+    <button>Both speed up equally by ~100× because GPUs have faster clock speeds</button>
+  </div>
+  <div class="fb right"><p>Exactly! Pointer-chasing is strictly sequential — 9,999 prep cooks sit idle waiting for cook #1 to find the next pointer. Matrix multiplication has millions of independent dot products that run simultaneously.</p></div>
+  <div class="fb wrong"><p>Remember: individual GPU cores are actually <em>slower</em> than CPU cores on sequential branching or pointer chasing. GPUs only win when thousands of independent identical calculations can run at the same moment.</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s3"><span class="sec-num">3</span>The hidden twist: cooking speed vs. hallway speed</h2>
+
+<p>Now comes the single most important hardware insight in all of AI serving — the one that separates beginners from engineers who know why their server is slow.</p>
+
+<p>A GPU has <b>two completely separate speed limits</b>:</p>
+<ol>
+  <li><b>Cooking speed — Compute (FLOPs/sec):</b> How many floating-point multiplies and adds the 10,000 cooks can perform per second (e.g., an NVIDIA L4 does <b>121 trillion</b> BF16 ops/sec; an H100 does <b>989 trillion</b>).</li>
+  <li><b>Hallway speed — Memory Bandwidth (GB/sec):</b> How fast ingredients (weights and vectors) can walk from the GPU's storage shelf (<b>VRAM / HBM</b>) into the cooks' hands (e.g., an L4 moves <b>300 GB/s</b>; an H100 moves <b>3,350 GB/s</b>).</li>
+</ol>
+
+<p>Think about what happens when you ask those 10,000 cooks to process <b>one single token</b> (generating 1 word for 1 user) vs. <b>a batch of 1,024 tokens</b> (reading a prompt or training) through a <code>12B</code> BF16 model (<code>24 GB</code> of weights):</p>
+
+<ul>
+  <li><b>Generating 1 token (batch = 1):</b> You must walk <b>all 24 GB of weights</b> through the hallway from VRAM into the chip, do just <b>2 ops per weight</b> (<code>24 billion</code> ops total), and throw the weights away! That's only <b>1 FLOP per byte</b> fetched. On an H100 (which wants <b>~295 FLOPs per byte</b> to stay busy!), the cooks finish chopping in 0.02 ms and then sit staring at the ceiling for <b>7.1 ms</b> waiting for the hallway! You are <b>memory-bandwidth-bound</b>.</li>
+  <li><b>Processing 1,024 tokens at once (prefill or training):</b> You walk those exact same 24 GB of weights through the hallway <em>once</em>, and reuse every weight across all 1,024 tokens! Now you do <b>1,024 FLOPs per byte</b> fetched — the cooks stay 100% busy and you are <b>compute-bound</b>!</li>
+</ul>
+
+<div class="figure">
+  <div id="viz-roofline"></div>
+  <div class="cap">Toggle GPU and drag <b>Tokens in Batch</b> from 1 (single-user decode) up to 1,024 (prefill / batched serving). Watch how single-token decode wastes &gt;99% of the GPU's compute waiting on the VRAM hallway — and why batching 16–64 users unlocks huge throughput for almost the same time per step!</div>
+</div>
+
+<p>That ratio — <b>math ops divided by bytes moved</b> — has a classic hardware name: <b>Arithmetic Intensity</b> (FLOPs/byte). The crossover point where cooking speed exactly equals hallway speed (<code>peak_FLOPs / memory_bandwidth</code>) is the GPU's <b>ridge point</b> (typically ~250–400 FLOPs/byte on modern NVIDIA GPUs). Below the ridge point, faster compute doesn't help — only moving <em>fewer bytes</em> or <em>reusing weights across more tokens</em> speeds you up!</p>
+
+<div class="keyidea"><b>The Roofline Law of LLMs:</b> Single-user text generation (decode) is almost always <b>memory-bandwidth-bound</b> (limited by reading the weights out of VRAM once per token). Prompt reading (prefill) and training are <b>compute-bound</b> (limited by Tensor Core FLOPs).</div>
+
+<div class="check" id="check-decode-bw">
+  <p class="q">You are serving Gemma 4 12B (BF16 = 24 GB) to 1 single user on an L4 GPU (300 GB/s VRAM bandwidth). Roughly what is the physical upper bound on decode speed (tokens/sec), ignoring overhead?</p>
+  <div class="opts">
+    <button>~5,000 tok/s — because the L4 does 121 trillion FLOPs/sec</button>
+    <button data-correct>~12.5 tok/s — because reading 24 GB of weights at 300 GB/s takes 80 ms per token (300 / 24 = 12.5)</button>
+    <button>~300 tok/s — one token per GB/s</button>
+  </div>
+  <div class="fb right"><p>Spot on! That single back-of-the-envelope division (<code>VRAM bandwidth / active weight GB</code>) predicts real-world single-user LLM speed within ~20% across every GPU on earth! Drop those weights to 4-bit (~6.7 GB) and the exact same L4 jumps from ~12 tok/s to ~45 tok/s.</p></div>
+  <div class="fb wrong"><p>Remember: generating 1 token forces the GPU to read <em>all 24 GB of weights</em> across the 300 GB/s VRAM hallway once. Time per token ≥ <code>24 GB / 300 GB/s = 0.08 s</code> → at most <code>1 / 0.08 = 12.5 tokens/sec</code>, no matter how many TFLOPS the chip has!</p></div>
+</div>
+
+<div class="check" id="check-batch-free">
+  <p class="q">On that same GPU during decode (memory-bandwidth-bound), what happens when you serve <b>8 concurrent users together in one batch</b> instead of 1 user?</p>
+  <div class="opts">
+    <button>Each user slows down by 8× immediately</button>
+    <button data-correct>Total tokens/sec scales nearly 8× with almost the same latency per token, because the GPU reads the weights ONCE and reuses them for all 8 users</button>
+    <button>Memory bandwidth drops by 8×</button>
+  </div>
+  <div class="fb right"><p>Yes!! That is the physical reason <b>continuous batching</b> in <code>vLLM</code> and <code>SGLang</code> exists: up until your batch hits the GPU's ridge point (hundreds of tokens!), those idle prep cooks can serve extra concurrent users for nearly free (as long as their KV caches fit in VRAM).</p></div>
+  <div class="fb wrong"><p>At batch size 1, over 99% of the GPU's math cores are sitting idle waiting for weights to walk down the VRAM hallway. Serving 8 users in one batch still walks the exact same 24 GB of weights down the hallway once — it just hands each weight to 8 idle cooks instead of 1!</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s4"><span class="sec-num">4</span>VRAM vs. System RAM: why PCIe is a tiny straw</h2>
+
+<p>A common beginner question: <em>"My cloud machine has 128 GB of system RAM and only 24 GB of GPU VRAM — why can't I just keep a 60 GB model in system RAM and let the GPU read it?"</em></p>
+
+<p>Compare the doorways:</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>Storage tier</th><th>Kitchen analogy</th><th>Typical size</th><th>Bandwidth (doorway width)</th></tr></thead>
+  <tbody>
+    <tr><td><b>GPU SRAM (L1 / shared mem)</b></td><td>Chef's cutting board</td><td>tens of MB</td><td>~15,000 – 30,000 GB/s</td></tr>
+    <tr><td><b>GPU VRAM (GDDR6 / HBM3)</b></td><td>Kitchen counter right next to cooks</td><td>24 – 80 GB</td><td><b>300 – 3,350 GB/s</b></td></tr>
+    <tr><td><b>CPU System RAM (via PCIe)</b></td><td>Warehouse across the street</td><td>64 – 512 GB</td><td><b>32 – 64 GB/s</b> (10–50× narrower!)</td></tr>
+    <tr><td><b>NVMe SSD</b></td><td>Supplier across town</td><td>1 – 4 TB</td><td>3 – 7 GB/s</td></tr>
+  </tbody>
+</table></div>
+
+<p>If a 60 GB model spills off the GPU counter into CPU RAM, every single generated token has to drag gigabytes across the tiny 32 GB/s PCIe straw — crushing decode speed from 40 tok/s down to ~0.5 tok/s. That is why every serving and fine-tuning job starts with one question: <b>does it fit in VRAM?</b></p>
+
+<div class="check" id="check-pcie">
+  <p class="q">You enable CPU offloading so a 50 GB model runs on a 24 GB GPU. Why does generation suddenly crawl at ~1 token per second?</p>
+  <div class="opts">
+    <button>Because CPU RAM uses slower floating-point math</button>
+    <button data-correct>Because every token has to stream offloaded layers across the narrow PCIe bus (~32–64 GB/s) instead of the GPU's VRAM highway (300–3,350 GB/s)</button>
+    <button>Because Python's GIL blocks the GPU</button>
+  </div>
+  <div class="fb right"><p>Exactly — PCIe is 10× to 50× narrower than GPU VRAM bandwidth. Offloading saves you from crashing on a quick test, but is almost never viable for real-time serving or phone calls.</p></div>
+  <div class="fb wrong"><p>The math still happens on the chip, but the ingredients have to walk across a narrow street (PCIe at ~32–64 GB/s) on every single token instead of sitting on the kitchen counter (VRAM at 300–3,350 GB/s).</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s5"><span class="sec-num">5</span>Four AI mysteries this one model immediately unlocks</h2>
+
+<p>Everything you'll build in Stages 2–7 now makes physical sense from one single diagram:</p>
+<ol>
+  <li><b>Why does 4-bit quantization (QAT) make Gemma 4 reply ~3–4× faster?</b> Not mainly because 4-bit math is faster — because 4-bit weights are <b>4× fewer bytes</b> to haul down the VRAM hallway on every decode token!</li>
+  <li><b>Why does Gemma 4 <code>26B-A4B</code> (MoE) generate tokens as fast as a 4B model?</b> Even though all 26B weights sit in VRAM, each token only reads the <b>4B active weights</b> across the hallway!</li>
+  <li><b>Why does FlashAttention speed up long prompts?</b> It fuses attention steps inside the ultra-fast tiny SRAM cutting board (~20,000 GB/s) so huge intermediate attention matrices never take round-trips to VRAM.</li>
+  <li><b>Why does our voice agent care so much about LLM TTFT vs. decode tok/s?</b> Prefill (reading the conversation so far) hits compute speed, while decode (emitting tokens to TTS) hits VRAM bandwidth — and both must stay tiny to beat the 800 ms caller threshold.</li>
+</ol>
+
+<div class="check" id="check-moe-speed">
+  <p class="q">Gemma 4 <code>26B-A4B</code> (Mixture-of-Experts) holds 26B parameters in VRAM, while Gemma 4 <code>31B</code> is dense. Why does <code>26B-A4B</code> decode tokens roughly 5–6× faster for a single caller on the same GPU?</p>
+  <div class="opts">
+    <button>Because MoE stores weights in 2-bit precision automatically</button>
+    <button data-correct>Because single-user decode is limited by bytes read from VRAM per token, and 26B-A4B only reads its 4B active expert weights per token instead of all 31B</button>
+    <button>Because MoE runs on the CPU instead of the GPU</button>
+  </div>
+  <div class="fb right"><p>Nail on the head! You still need enough VRAM to <em>hold</em> all 26B weights on the counter, but per token the hallway only carries the 4B weights the router chose — ~6× fewer bytes moved per token.</p></div>
+  <div class="fb wrong"><p>Tie it back to the hallway rule (<code>tok/s ≈ VRAM_bandwidth / bytes_read_per_token</code>). A dense 31B model drags all 31B weights through the hallway for every single word; <code>26B-A4B</code> only drags the 4B active weights for that token.</p></div>
+</div>
+
+<div class="check" id="check-quant-speed">
+  <p class="q">If you double a GPU's raw compute (TFLOPS) while keeping VRAM bandwidth identical, which workload speeds up almost 2× and which barely moves?</p>
+  <div class="opts">
+    <button>Single-user decode speeds up 2×; large-batch training barely moves</button>
+    <button data-correct>Large-batch training / long-prompt prefill speeds up ~2× (compute-bound); single-user decode barely moves (still waiting on VRAM bandwidth)</button>
+    <button>Neither changes unless you upgrade CPU RAM</button>
+  </div>
+  <div class="fb right"><p>Exactly! Upgrading compute speeds up compute-bound work (training &amp; prefill), while speeding up single-user decode requires higher VRAM bandwidth, smaller/quantized weights, or speculative decoding (which checks multiple draft tokens in one weight-read!).</p></div>
+  <div class="fb wrong"><p>Look back at the interactive roofline widget: single-user decode is starved by the VRAM hallway, not by cook speed. Giving idle cooks faster knives won't deliver ingredients faster — only compute-bound large batches (training / prefill) use those extra TFLOPS.</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="summary"><span class="sec-num">✓</span>What to remember</h2>
+<ol>
+  <li>A GPU trades a few clever serial CPU cores for thousands of simple parallel cores + Tensor Cores — ideal for independent matrix math, terrible for pointer chasing.</li>
+  <li>A single matrix multiply <code>(M, K) @ (K, N)</code> performs <code>2 × M × K × N</code> FLOPs.</li>
+  <li>Every GPU has two speed walls: <b>compute (FLOPs/s)</b> and <b>VRAM bandwidth (GB/s)</b>. Their ratio (<code>FLOPs/s ÷ GB/s</code>) is the <b>ridge point</b>.</li>
+  <li>Below the ridge point (single-user decode) you are <b>memory-bandwidth-bound</b> (<code>max tok/s ≈ VRAM_BW / active_weight_GB</code>); above it (training, long prefill, big batches) you are <b>compute-bound</b>.</li>
+  <li>Keep active weights in VRAM — spilling across PCIe to CPU RAM narrows your doorway by 10–50×.</li>
+</ol>
+
+<div class="review" id="review"></div>
+
+<!-- ============================================================ -->
+<h2 id="exercises"><span class="sec-num">✎</span>Exercises</h2>
+
+<div class="exercise">
+  <div class="tier core">Core · local CPU code (pytest)</div>
+  <h4>Implement <code>gpu_roofline.py</code></h4>
+  <p>Open <a href="../../../../exercises/01-matrices-and-gpus/gpu_roofline.py"><code>gpu_roofline.py</code></a> and implement exact matmul FLOPs, bytes moved, arithmetic intensity, ridge point, predicted decode tok/s, and compute-vs-bandwidth bottleneck classification for real NVIDIA L4 and H100 specs:</p>
+  <pre class="plain"><code>python3 -m pytest -k gpu_roofline</code></pre>
+</div>
+
+<nav class="chapter-nav">
+  <a href="everyday-numpy-for-ml.html"><small>← Previous</small>Everyday NumPy: slicing, axis, broadcasting &amp; masks</a>
+  <a class="next" href="../../02-learning-from-scratch/concepts/loss-and-gradient-descent.html"><small>Stage 1 →</small>Guess, measure wrongness, nudge downhill</a>
+</nav>
+
+</main>
+<script>
+(function () {
+  const host = document.getElementById("viz-roofline");
+  if (!host || !window.V) return;
+  const GPUS = {
+    l4: { name: "NVIDIA L4 (24 GB)", tflops: 121, bw: 300 },
+    h100: { name: "NVIDIA H100 (80 GB)", tflops: 989, bw: 3350 },
+  };
+  let gpuKey = "l4";
+  let batchTokens = 1;
+  const weightGB = 24.0; // 12B BF16 weights (2 bytes/param)
+
+  const controls = V.el("div", { style: "display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:12px" });
+  const btnL4 = V.el("button", { type: "button", class: "btn primary" }, "L4 (121 TF · 300 GB/s)");
+  const btnH100 = V.el("button", { type: "button", class: "btn" }, "H100 (989 TF · 3,350 GB/s)");
+  const sliderLbl = V.el("label", { class: "small", style: "display:flex;align-items:center;gap:8px;flex:1 1 220px" });
+  const sliderVal = V.el("b", {}, "1 token (decode)");
+  const slider = V.el("input", { type: "range", min: "0", max: "10", step: "1", value: "0", style: "flex:1;accent-color:var(--accent)" });
+  sliderLbl.append("Batch tokens: ", slider, sliderVal);
+  controls.append(btnL4, btnH100, sliderLbl);
+  const out = V.el("div");
+  host.append(controls, out);
+
+  function paint() {
+    btnL4.className = "btn" + (gpuKey === "l4" ? " primary" : "");
+    btnH100.className = "btn" + (gpuKey === "h100" ? " primary" : "");
+    const g = GPUS[gpuKey];
+    const ridge = (g.tflops * 1e12) / (g.bw * 1e9); // FLOPs per byte
+    // 12B params * 2 FLOPs/param per token = 24e9 FLOPs * batchTokens; weight read = 24e9 bytes (activations tiny relative to weights)
+    const flops = 2 * 12e9 * batchTokens;
+    const bytes = weightGB * 1e9;
+    const ai = flops / bytes; // = batchTokens FLOPs/byte in BF16!
+    const tComputeMs = (flops / (g.tflops * 1e12)) * 1000;
+    const tMemMs = (bytes / (g.bw * 1e9)) * 1000;
+    const tStepMs = Math.max(tComputeMs, tMemMs);
+    const computeUtil = Math.min(100, (tComputeMs / tStepMs) * 100);
+    const tokPerSec = (batchTokens / tStepMs) * 1000;
+    const bound = ai < ridge ? "Memory-Bandwidth Bound (cooks waiting on VRAM!)" : "Compute Bound (Tensor Cores saturated!)";
+    const boundCol = ai < ridge ? "var(--warn)" : "var(--ok)";
+
+    sliderVal.textContent = batchTokens === 1 ? "1 token (single decode)" : `${batchTokens} tokens`;
+
+    const barWrap = V.el("div", { style: "height:22px;background:var(--surface-2);border:1px solid var(--border);border-radius:7px;overflow:hidden;margin:8px 0" },
+      V.el("div", { style: `height:100%;width:${Math.max(1.5, computeUtil).toFixed(1)}%;background:${boundCol};transition:width 0.15s` }));
+
+    out.replaceChildren(
+      V.el("div", { class: "small", style: "display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px" },
+        V.el("span", {}, "Regime: ", V.el("b", { style: `color:${boundCol}` }, bound)),
+        V.el("span", { class: "muted" }, `Ridge point: ${Math.round(ridge)} FLOPs/byte · Current: ${ai.toFixed(1)} FLOPs/byte`)),
+      barWrap,
+      V.el("div", { class: "small", style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:8px" },
+        V.el("div", { style: "padding:8px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border)" },
+          V.el("div", { class: "muted" }, "Compute utilization"), V.el("b", { style: `color:${boundCol}` }, `${computeUtil.toFixed(1)}%`)),
+        V.el("div", { style: "padding:8px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border)" },
+          V.el("div", { class: "muted" }, "Step time (12B BF16)"), V.el("b", {}, `${tStepMs.toFixed(1)} ms`)),
+        V.el("div", { style: "padding:8px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border)" },
+          V.el("div", { class: "muted" }, "Total throughput"), V.el("b", {}, `${Math.round(tokPerSec).toLocaleString()} tok/s`))
+      )
+    );
+  }
+  btnL4.addEventListener("click", () => { gpuKey = "l4"; paint(); });
+  btnH100.addEventListener("click", () => { gpuKey = "h100"; paint(); });
+  slider.addEventListener("input", () => { batchTokens = 1 << (+slider.value); paint(); });
+  paint();
+})();
+</script>
+</body>
+</html>

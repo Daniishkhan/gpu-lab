@@ -58,24 +58,27 @@ def main(argv: list[str]) -> None:
         tid, name = argv[1], argv[2]
         title = argv[3] if len(argv) > 3 else name.replace("_", " ").replace("-", " ").capitalize()
         sec, t = topic(tid)
-        d = ROOT / "sections" / sec["slug"]
         kw = dict(TITLE=title, TOPIC_ID=tid, TAG=t["tag"], TOPIC_TEXT=t["text"],
                   SECTION_ID=sec["id"], SECTION_TITLE=sec["title"])
         if kind == "concept":
+            d = ROOT / "book" / "sections" / sec["slug"]
             write(d / "concepts" / f"{slugify(name)}.html", fill((T / "concept.html").read_text(), **kw))
         else:
             mod = re.sub(r"\W", "_", name)
-            if list(ROOT.glob(f"sections/*/exercises/{mod}.py")):
+            if list(ROOT.glob(f"exercises/*/{mod}.py")):
                 sys.exit(f"An exercise module named {mod} already exists; pick a unique name.")
-            write(d / "exercises" / f"{mod}.py", fill((T / "exercise.py").read_text(), MODULE=mod, **kw))
-            write(d / "exercises" / f"test_{mod}.py", fill((T / "test_exercise.py").read_text(), MODULE=mod))
-    elif kind in ("exp", "eval", "runbook", "capstone"):
+            d = ROOT / "exercises" / sec["slug"]
+            write(d / f"{mod}.py", fill((T / "exercise.py").read_text(), MODULE=mod, **kw))
+            write(d / f"test_{mod}.py", fill((T / "test_exercise.py").read_text(), MODULE=mod))
+    elif kind == "runbook":
+        title = argv[1]
+        write(ROOT / "gpu-labs" / slugify(title) / "README.md", fill((T / "gpu-runbook.md").read_text(), TITLE=title, DATE=today))
+    elif kind in ("exp", "eval", "capstone"):
         title = argv[1]
         where, tpl = {
-            "exp": ("sections/09-production-and-capstones/experiments", "experiment-log.md"),
-            "eval": ("sections/04-fine-tuning-gemma/eval-specs", "eval-spec.md"),
-            "runbook": ("labs", "gpu-runbook.md"),
-            "capstone": ("sections/09-production-and-capstones/capstones", "capstone-plan.md"),
+            "exp": ("journal/experiments", "experiment-log.md"),
+            "eval": ("journal/evals", "eval-spec.md"),
+            "capstone": ("journal/capstones", "capstone-plan.md"),
         }[kind]
         write(ROOT / where / f"{slugify(title)}.md", fill((T / tpl).read_text(), TITLE=title, DATE=today))
     else:

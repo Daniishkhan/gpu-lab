@@ -12,3 +12,4 @@ _site/
 *.mp3
 checkpoints/
 outputs/
+scratch/

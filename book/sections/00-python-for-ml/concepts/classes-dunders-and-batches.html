@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="topic" content="00.08">
+  <title>Classes, magic methods &amp; batched generators for ML</title>
+  <script>try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("gpu-lab:theme")) || "dark"; } catch (e) {}</script>
+  <link rel="stylesheet" href="../../../assets/style.css">
+  <script src="../../../assets/curriculum.js"></script>
+  <script src="../../../assets/viz.js"></script>
+  <script src="../../../assets/shell.js"></script>
+  <script src="../../../assets/book.js"></script>
+</head>
+<body data-root="../../.." data-section="00" data-page="concept">
+<main class="content book">
+
+<header class="chapter-head">
+  <div class="eyebrow">Phase 0A · Day 5 · Part 2</div>
+  <h1>Classes, magic methods &amp; batched generators for ML</h1>
+  <div class="meta">
+    <span><span class="badge P0">P0</span> ML Python bridge</span>
+    <span>about 18 minutes</span>
+    <span>7 quick checks · 1 CPU exercise</span>
+  </div>
+</header>
+
+<p>ML codebases repeat four expressions everywhere: <code>a + b</code> on custom numbers, <code>layer(x)</code> on a model object, <code>len(ds)</code> and <code>ds[-1]</code> on a dataset, and <code>for batch in loader:</code> on mini-batches. Each one runs a small built-in Python hook you can write in ten lines. Build all four here, and Stage 1's autograd engine and PyTorch's layers and loaders read like ordinary Python.</p>
+
+<div class="learn-list">
+  <h4>By the end you'll be able to</h4>
+  <ol>
+    <li>Bundle state and rules into a class with <code>__init__</code>, <code>self</code>, <code>float()</code> coercion, and a readable <code>__repr__</code>.</li>
+    <li>Implement <code>==</code>, <code>+</code>, and <code>*</code> (<code>__eq__</code>, <code>__add__</code>, <code>__mul__</code>) safely without identity surprises, type crashes, or mutation bugs.</li>
+    <li>Build callable objects (<code>__call__</code>) and snapshot-safe containers (<code>__len__</code>, <code>__getitem__</code>, <code>list(items)</code>).</li>
+    <li>Write lazy mini-batch generators with <code>yield</code> and predict partial batches, lazy errors, and single-pass exhaustion.</li>
+  </ol>
+</div>
+
+<p class="muted small">How to read this: top to bottom, answering every quick check before moving on. Builds on <a href="python-building-blocks.html">Classes, dataclasses, decorators &amp; with blocks</a> and <a href="math-in-plain-python.html">Doing math in plain Python: formulas, stats &amp; 2D grids</a>.</p>
+
+<!-- ============================================================ -->
+<h2 id="s1"><span class="sec-num">1</span>Why do plain tuples break down once your data has rules?</h2>
+
+<div class="story">
+  <p>Picture running a <b>parcel dispatch desk</b> that tracks delivery legs on a city grid — blocks east (<code>dx</code>) and blocks north (<code>dy</code>). Your first attempt stores each leg as a plain Python tuple, <code>leg_1 = (2.0, 3.0)</code> and <code>leg_2 = (4.0, -1.0)</code>, and tries <code>+</code> and <code>* 3</code>:</p>
+</div>
+
+<pre><code>leg_1 = (2.0, 3.0)
+leg_2 = (4.0, -1.0)
+print(leg_1 + leg_2)  # (2.0, 3.0, 4.0, -1.0) &lt;-- glued, not added!
+print(leg_1 * 3)      # (2.0, 3.0, 2.0, 3.0, 2.0, 3.0)</code></pre>
+
+<p>Tuples do not know those numbers represent a 2D step, so <code>+</code> glues them into a 4-tuple and <code>* 3</code> repeats the pair. Loose variables (<code>dx1, dy1, dx2, dy2</code>) invite silent swaps.</p>
+
+<p>Carry this single picture through the chapter: your <b>Parcel Dispatch Desk</b> uses four dedicated tools, each matching one Python hook (at the end we mark where this analogy stops fitting):</p>
+
+<pre class="diagram"><code>Dispatch Desk   → Python hook
+──────────────────────────────────────
+1. Route Card     a + b, a * 3, a == b
+2. Fee Meter      meter(w) (__call__)
+3. Binder         len(box), box[-1]
+4. Crate Loader   yield one mini-batch</code></pre>
+
+<p>Start with the stamped route card. A <b>class</b> is the template, and calling <code>Step2D(2, 3)</code> stamps a fresh object (an <b>instance</b>). Its <code>__init__</code> method runs on creation: <code>self</code> names the new card being filled out, and <code>float(...)</code> keeps integer inputs stored as floats. Without <code>__repr__</code>, calling <code>print(leg)</code> shows cryptic text like <code>&lt;__main__.Step2D object at 0x...&gt;</code>; adding <code>__repr__</code> returns a constructor-style string starting with <code>"Step2D("</code> (the same convention as <code>"Vec2D("</code> in the exercise):</p>
+
+<pre><code>class Step2D:
+    def __init__(self, dx, dy):
+        self.dx = float(dx)
+        self.dy = float(dy)
+
+    def __repr__(self):
+        return f"Step2D({self.dx}, {self.dy})"
+
+leg = Step2D(2, 3)
+print(leg.dx, leg.dy)  # 2.0 3.0
+print(repr(leg))       # Step2D(2.0, 3.0)</code></pre>
+
+<p>Double-underscore names like <code>__init__</code> and <code>__repr__</code> are called <b>dunder</b> (or <b>magic</b>) methods. Python reserves them so built-in syntax — printing, <code>+</code>, <code>*</code>, <code>==</code>, <code>len()</code> — knows which method on your object to run.</p>
+
+<details class="aside another">
+  <summary><span>Explain it another way: What is <code>self</code> doing in every method?</span></summary>
+  <p>When you write <code>leg.__repr__()</code>, Python rewrites it as <code>Step2D.__repr__(leg)</code>, passing the object on the left of the dot as the first argument. Naming that first slot <code>self</code> lets every method read that specific card's <code>dx</code> and <code>dy</code>.</p>
+</details>
+
+<div class="check" id="check-self-repr">
+  <p class="q">Inside <code>Step2D.__init__(self, dx, dy)</code>, you write <code>dx = float(dx)</code> instead of <code>self.dx = float(dx)</code>, then run <code>leg = Step2D(2, 3); print(leg.dx)</code>. What happens?</p>
+  <div class="opts">
+    <button>Prints <code>2.0</code> — parameters inside <code>__init__</code> attach to the object automatically</button>
+    <button data-correct>Raises <code>AttributeError</code> — <code>dx</code> stayed a local variable and was never saved on <code>self</code></button>
+    <button>Prints <code>2</code> as an <code>int</code>, skipping <code>float()</code></button>
+  </div>
+  <div class="fb right"><p>Without <code>self.</code>, <code>dx</code> vanishes when <code>__init__</code> returns. Only <code>self.attr = ...</code> stamps a field onto the card.</p></div>
+  <div class="fb wrong"><p><code>__init__</code> follows normal function scoping: plain names live in a temporary scratchpad and disappear at return. Assigning to <code>self.dx</code> stores the value on the object.</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s2"><span class="sec-num">2</span><span>How does Python make <code>a&nbsp;==&nbsp;b</code>, <code>a&nbsp;+&nbsp;b</code>, and <code>a&nbsp;*&nbsp;3</code> work?</span></h2>
+
+<p>Try comparing or adding two <code>Step2D</code> cards and three quick surprises appear.</p>
+
+<p><b>1. Default <code>==</code> checks card identity, not numbers.</b> Without <code>__eq__</code>, <code>Step2D(2, 3) == Step2D(2, 3)</code> returns <code>False</code> because Python sees two separate cards.</p>
+
+<p><b>2. Naive <code>__eq__</code> crashes on other types.</b> Writing <code>return self.dx == other.dx and self.dy == other.dy</code> fails on <code>Step2D(2, 3) == "hi"</code> with <code>AttributeError</code> because <code>"hi"</code> has no <code>.dx</code>. Adding <code>__eq__</code> to <code>Step2D</code> and guarding with <code>isinstance(other, Step2D)</code> (checking whether <code>other</code> is a <code>Step2D</code>) returns <code>False</code> cleanly:</p>
+
+<pre><code>class Step2D:
+    def __init__(self, dx, dy):
+        self.dx, self.dy = float(dx), float(dy)
+    def __eq__(self, other):
+        if not isinstance(other, Step2D):
+            return False
+        return self.dx == other.dx and self.dy == other.dy
+
+print(Step2D(2, 3) == Step2D(2.0, 3.0))  # True
+print(Step2D(2, 3) == "hi")              # False (no crash!)</code></pre>
+
+<p><b>3. Mutating <code>self</code> inside <code>__add__</code> corrupts earlier variables.</b> Python maps <code>a + b</code> to <code>a.__add__(b)</code> and <code>a * 3</code> to <code>a.__mul__(3)</code>. If <code>__add__</code> overwrote <code>self.dx += other.dx</code> and returned <code>self</code>, then running <code>c = a + b</code> on <code>a = Step2D(2, 3)</code> and <code>b = Step2D(4, -1)</code> would silently turn <code>a</code> itself into <code>Step2D(6.0, 2.0)</code> — so a later <code>a * 3</code> would triple the wrong card! Here is <code>Step2D</code> with immutable <code>__add__</code> and <code>__mul__</code> that return a <b>brand-new</b> card while leaving <code>self</code> and <code>other</code> untouched:</p>
+
+<pre><code>class Step2D:
+    def __init__(self, dx, dy):
+        self.dx, self.dy = float(dx), float(dy)
+    def __repr__(self):
+        return f"Step2D({self.dx}, {self.dy})"
+    def __add__(self, other):
+        return Step2D(self.dx + other.dx, self.dy + other.dy)
+    def __mul__(self, scalar):
+        return Step2D(self.dx * scalar, self.dy * scalar)
+
+a, b = Step2D(2.0, 3.0), Step2D(4.0, -1.0)
+print(a + b)  # Step2D(6.0, 2.0)
+print(a * 3)  # Step2D(6.0, 9.0)
+print(a, b)   # Step2D(2.0, 3.0) Step2D(4.0, -1.0)</code></pre>
+
+<div class="figure">
+  <svg id="svg-dunder" class="viz" viewBox="0 0 680 318" role="img" aria-label="Step2D immutable operator dispatch and value equality: a + b calls a.__add__(b) to stamp a new Step2D while keeping a and b unchanged, and __eq__ with isinstance compares coordinates instead of card identity">
+    <defs>
+      <marker id="v1-arr-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0,1 L9,5 L0,9 z" fill="var(--border-strong)"/>
+      </marker>
+      <marker id="v1-arr-ok" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0,1 L9,5 L0,9 z" fill="var(--ok)"/>
+      </marker>
+    </defs>
+
+    <text x="16" y="24" font-family="var(--ui)" font-size="12" font-weight="700" fill="var(--accent)">1. IMMUTABLE OPERATOR DISPATCH — a and b stay untouched</text>
+
+    <rect x="16" y="36" width="196" height="62" rx="8" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5"/>
+    <text x="28" y="56" font-size="12" font-weight="700" fill="var(--accent)">a : Step2D</text>
+    <text x="200" y="56" text-anchor="end" font-family="var(--ui)" font-size="10.5" fill="var(--muted)">untouched</text>
+    <line x1="26" y1="65" x2="202" y2="65" stroke="var(--border)" stroke-width="1"/>
+    <text x="28" y="84" font-size="12" fill="var(--text-strong)">dx = 2.0 · dy = 3.0</text>
+
+    <rect x="16" y="110" width="196" height="62" rx="8" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5"/>
+    <text x="28" y="130" font-size="12" font-weight="700" fill="var(--accent)">b : Step2D</text>
+    <text x="200" y="130" text-anchor="end" font-family="var(--ui)" font-size="10.5" fill="var(--muted)">untouched</text>
+    <line x1="26" y1="139" x2="202" y2="139" stroke="var(--border)" stroke-width="1"/>
+    <text x="28" y="158" font-size="12" fill="var(--text-strong)">dx = 4.0 · dy = -1.0</text>
+
+    <path d="M 212 67 C 226 67, 226 90, 240 90" fill="none" stroke="var(--border-strong)" stroke-width="1.6" marker-end="url(#v1-arr-muted)"/>
+    <path d="M 212 141 C 226 141, 226 118, 240 118" fill="none" stroke="var(--border-strong)" stroke-width="1.6" marker-end="url(#v1-arr-muted)"/>
+
+    <rect x="244" y="48" width="192" height="112" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+    <text x="340" y="68" text-anchor="middle" font-family="var(--ui)" font-size="11" fill="var(--text-strong)">You write</text>
+    <text x="340" y="90" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--text-strong)">c = a + b</text>
+    <text x="340" y="111" text-anchor="middle" font-family="var(--ui)" font-size="11" fill="var(--text-strong)">Python translates to</text>
+    <rect x="266" y="121" width="148" height="28" rx="6" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.2"/>
+    <text x="340" y="139" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent)">a.__add__(b)</text>
+
+    <line x1="436" y1="104" x2="470" y2="104" stroke="var(--ok)" stroke-width="2.2" marker-end="url(#v1-arr-ok)"/>
+
+    <rect x="474" y="48" width="190" height="112" rx="10" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.8"/>
+    <rect x="576" y="56" width="78" height="20" rx="5" fill="var(--ok)"/>
+    <text x="615" y="70" text-anchor="middle" font-family="var(--ui)" font-size="10.5" font-weight="700" fill="var(--on-accent)">NEW object</text>
+    <text x="486" y="71" font-size="12" font-weight="700" fill="var(--text-strong)">c : Step2D</text>
+    <line x1="486" y1="84" x2="652" y2="84" stroke="var(--ok)" stroke-width="1" stroke-opacity="0.45"/>
+    <text x="486" y="110" font-size="12" font-weight="700" fill="var(--text-strong)">dx = 6.0 · dy = 2.0</text>
+    <text x="486" y="138" font-family="var(--ui)" font-size="11.5" fill="var(--text-strong)">(2.0 + 4.0, 3.0 - 1.0)</text>
+
+    <line x1="16" y1="186" x2="664" y2="186" stroke="var(--border)" stroke-width="1.2" stroke-dasharray="4 4"/>
+
+    <text x="16" y="208" font-family="var(--ui)" font-size="12" font-weight="700" fill="var(--brand)">2. VALUE EQUALITY — comparing two separate Step2D(2.0, 3.0) cards</text>
+
+    <rect x="16" y="220" width="314" height="84" rx="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.5"/>
+    <text x="30" y="241" font-family="var(--ui)" font-size="11.5" font-weight="700" fill="var(--text-strong)">Without __eq__ (Python default)</text>
+    <text x="30" y="266" font-size="11" fill="var(--text-strong)">Step2D(2,3) == Step2D(2,3)</text>
+    <rect x="258" y="250" width="58" height="22" rx="5" fill="var(--bad)"/>
+    <text x="287" y="265" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--on-accent)">False</text>
+    <text x="30" y="290" font-family="var(--ui)" font-size="11.5" fill="var(--text-strong)">Checks identity (two separate cards)</text>
+
+    <rect x="350" y="220" width="314" height="84" rx="8" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.5"/>
+    <text x="364" y="241" font-family="var(--ui)" font-size="11.5" font-weight="700" fill="var(--text-strong)">With __eq__ (isinstance + dx, dy)</text>
+    <text x="364" y="266" font-size="11" fill="var(--text-strong)">a.__eq__(Step2D(2,3))</text>
+    <rect x="592" y="250" width="58" height="22" rx="5" fill="var(--ok)"/>
+    <text x="621" y="265" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--on-accent)">True</text>
+    <text x="364" y="290" font-family="var(--ui)" font-size="11.5" fill="var(--text-strong)">Compares values; non-Step2D → False</text>
+  </svg>
+  <div class="cap">Top: <code>a + b</code> calls <code>a.__add__(b)</code> and stamps a new <code>Step2D</code> while leaving <code>a</code> and <code>b</code> untouched. Bottom: without <code>__eq__</code>, two matching cards compare <code>False</code>.</div>
+</div>
+
+<div class="keyidea"><b>Keep arithmetic dunders immutable:</b> <code>__add__</code> and <code>__mul__</code> return a fresh object and never overwrite <code>self</code> or <code>other</code>.</div>
+
+<details class="aside deeper">
+  <summary><span>Go deeper: Why does <code>3 * a</code> fail without <code>__rmul__</code>?</span></summary>
+  <p>Python asks the left operand first: <code>3 * a</code> tries <code>int.__mul__</code>, which does not know <code>Step2D</code>, then falls back to reflected <code>a.__rmul__(3)</code>. Two lines support both orders — a pattern you will reuse in Stage 1's <code>Value</code> class (<code>02.02</code>):</p>
+  <pre><code>class Step2D:
+    def __init__(self, dx, dy):
+        self.dx, self.dy = float(dx), float(dy)
+    def __repr__(self):
+        return f"Step2D({self.dx}, {self.dy})"
+    def __mul__(self, scalar):
+        return Step2D(self.dx * scalar, self.dy * scalar)
+    def __rmul__(self, scalar):
+        return self.__mul__(scalar)
+
+a = Step2D(2.0, 3.0)
+print(a * 3)  # Step2D(6.0, 9.0) (calls a.__mul__(3))
+print(3 * a)  # Step2D(6.0, 9.0) (calls a.__rmul__(3))</code></pre>
+</details>
+
+<div class="check" id="check-eq-guard">
+  <p class="q">You write <code>Step2D.__eq__(self, other)</code> as <code>return self.dx == other.dx and self.dy == other.dy</code> (no <code>isinstance</code> guard). What happens on <code>Step2D(2, 3) == "hi"</code>?</p>
+  <div class="opts">
+    <button>Returns <code>False</code> automatically because strings never equal custom objects</button>
+    <button data-correct>Crashes with <code>AttributeError</code> when reading <code>"hi".dx</code></button>
+    <button>Returns <code>True</code> because both objects are non-empty</button>
+  </div>
+  <div class="fb right"><p>Python runs your <code>__eq__</code> verbatim, so <code>"hi".dx</code> raises <code>AttributeError</code>. Guarding with <code>if not isinstance(other, Step2D): return False</code> prevents cross-type crashes.</p></div>
+  <div class="fb wrong"><p>Python's default identity check disappears the moment you define <code>__eq__</code>. Your method receives whatever sits on the right of <code>==</code>, and a <code>str</code> has no <code>.dx</code> attribute.</p></div>
+</div>
+
+<div class="check" id="check-immutable-add">
+  <p class="q">A buggy <code>Step2D.__add__</code> mutates <code>self</code> in place (<code>self.dx += other.dx; self.dy += other.dy; return self</code>). Given <code>a = Step2D(2, 3)</code> and <code>b = Step2D(4, -1)</code>, you run <code>c = a + b</code> then <code>d = a * 3</code>. What is <code>d</code>?</p>
+  <div class="opts">
+    <button><code>Step2D(6.0, 9.0)</code> — <code>a</code> still holds <code>(2.0, 3.0)</code></button>
+    <button data-correct><code>Step2D(18.0, 6.0)</code> — <code>a + b</code> silently overwrote <code>a</code> to <code>(6.0, 2.0)</code></button>
+    <button><code>Step2D(12.0, -3.0)</code> — <code>b</code> got multiplied instead</button>
+  </div>
+  <div class="fb right"><p>Mutating <code>self</code> turned <code>a</code> into <code>(6.0, 2.0)</code> (and aliased <code>c</code> to <code>a</code>), so <code>a * 3</code> tripled <code>(6.0, 2.0)</code> into <code>Step2D(18.0, 6.0)</code>.</p></div>
+  <div class="fb wrong"><p>Trace the coordinates: after <code>self.dx += 4</code> and <code>self.dy += -1</code>, the original <code>a</code> now holds <code>(6.0, 2.0)</code>. Multiply both by <code>3</code> and you get <code>(18.0, 6.0)</code> instead of <code>(6.0, 9.0)</code>.</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s3"><span class="sec-num">3</span><span>Why do ML layers look like functions (<code>layer(x)</code>) even though they are objects?</span></h2>
+
+<p>In <code>00.07</code> you wrote the linear rule <code>w * x + b</code> as a function taking <code>w</code> and <code>b</code> every time. At the dispatch desk, shipping tiers follow that exact rule: <code>rate * weight + base</code>. Re-passing <code>(rate, base)</code> on every parcel invites swapped parameters.</p>
+
+<p>Desk tool #2 is a <b>Pre-Set Fee Meter</b> (<code>FeeMeter</code>): dial <code>rate</code> and <code>base</code> once in <code>__init__</code>, then drop any weight straight onto the object with <code>express(4.0)</code>. Python maps <code>obj(x)</code> to <code>obj.__call__(x)</code> (without <code>__call__</code>, calling an instance raises <code>TypeError: '...' object is not callable</code>):</p>
+
+<pre><code>class FeeMeter:
+    def __init__(self, rate, base):
+        self.rate = float(rate)
+        self.base = float(base)
+
+    def __call__(self, weight):
+        return self.rate * weight + self.base
+
+express = FeeMeter(rate=2.5, base=1.0)
+print(express(4.0))  # 11.0
+print(express(0.0))  # 1.0</code></pre>
+
+<div class="figure">
+  <div id="viz-callable"></div>
+  <div class="cap">Pick a preset or slide <b>rate</b> and <b>base</b> (saved once in <code>__init__</code>), then move <b>weight</b> or click a weight chip. Watch <code>meter(weight)</code> call <code>meter.__call__(weight)</code> — the same <code>w * x + b</code> rule from <code>00.07</code> — while <code>self.rate</code> and <code>self.base</code> stay pinned.</div>
+</div>
+
+<p>This exact <code>__call__</code> hook is why PyTorch layers are built once with their learned weights and then invoked like functions: <code>out = layer(x)</code>.</p>
+
+<div class="check" id="check-call-syntax">
+  <p class="q">You create <code>meter = FeeMeter(rate=3.0, base=-2.0)</code> and run <code>meter(5.0)</code> and <code>meter(0.0)</code>. Which method runs, and what two numbers return?</p>
+  <div class="opts">
+    <button><code>meter.__init__</code> runs again, returning <code>15.0</code> and <code>0.0</code></button>
+    <button data-correct><code>meter.__call__</code> runs, returning <code>13.0</code> and <code>-2.0</code></button>
+    <button>Python raises <code>TypeError</code> because instances cannot be called</button>
+  </div>
+  <div class="fb right"><p>Calling an instance triggers <code>__call__</code>: <code>3.0 * 5.0 + (-2.0) = 13.0</code> and <code>3.0 * 0.0 + (-2.0) = -2.0</code>, reusing the stored <code>rate</code> and <code>base</code>.</p></div>
+  <div class="fb wrong"><p><code>__init__</code> runs only when <code>FeeMeter(...)</code> constructs the object. Every later <code>meter(weight)</code> forwards <code>weight</code> into <code>__call__</code>.</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s4"><span class="sec-num">4</span>How do you build an indexable container without leaking caller edits?</h2>
+
+<p>ML datasets need two basic hooks: <code>len(box)</code> (<code>__len__</code>) and <code>box[idx]</code> (<code>__getitem__</code>). Writing them looks brief — until the sticky-note aliasing bug from <code>00.03</code> sneaks in:</p>
+
+<pre><code>class LeakyBox:
+    def __init__(self, items):
+        self._items = items  # BUG: alias to caller list!
+
+    def __len__(self):
+        return len(self._items)
+
+    def __getitem__(self, idx):
+        return self._items[idx]
+
+clipboard = ["mug", "lamp", "book"]
+box = LeakyBox(clipboard)
+clipboard.append("rug")
+print(len(box), box[-1])  # 4 rug  &lt;-- silently mutated!</code></pre>
+
+<p>Because <code>self._items = items</code> shared the caller's live <code>clipboard</code>, appending <code>"rug"</code> outside the class silently changed <code>len(box)</code> to <code>4</code> and <code>box[-1]</code> to <code>"rug"</code>.</p>
+
+<p>Desk tool #3 is a <b>Sealed Manifest Binder</b> (<code>OrderBox</code>): photocopy the incoming sequence with <code>self._items = list(items)</code> (the leading underscore on <code>_items</code> signals internal storage). That one line seals out caller edits, accepts any <code>Sequence</code> (<code>list</code> or <code>tuple</code>), and gives you negative indexing <code>box[-1]</code> for free via <code>self._items[idx]</code>:</p>
+
+<pre><code>class OrderBox:
+    def __init__(self, items):
+        self._items = list(items)  # fresh snapshot copy
+
+    def __len__(self):
+        return len(self._items)
+
+    def __getitem__(self, idx):
+        return self._items[idx]
+
+clipboard = ["mug", "lamp", "book"]
+box = OrderBox(clipboard)
+clipboard.append("rug")
+print(len(box), box[0], box[-1])  # 3 mug book</code></pre>
+
+<div class="figure">
+  <svg id="svg-snapshot" class="viz" viewBox="0 0 680 356" role="img" aria-label="Comparing a direct list reference that leaks clipboard.append('rug') into LeakyBox (length 3 to 4) against OrderBox's defensive list(items) snapshot that stays length 3 and supports box[0] and box[-1]">
+    <defs>
+      <marker id="v2-arr-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0,1 L9,5 L0,9 z" fill="var(--border-strong)"/>
+      </marker>
+      <marker id="v2-arr-bad" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0,1 L9,5 L0,9 z" fill="var(--bad)"/>
+      </marker>
+      <marker id="v2-arr-ok" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0,1 L9,5 L0,9 z" fill="var(--ok)"/>
+      </marker>
+    </defs>
+
+    <rect x="14" y="12" width="652" height="150" rx="10" fill="var(--surface)" stroke="var(--bad)" stroke-width="1.6"/>
+    <text x="28" y="34" font-family="var(--ui)" font-size="12.5" font-weight="700" fill="var(--bad)">BUG: self._items = items (shared list — aliasing leak)</text>
+    <rect x="526" y="18" width="126" height="22" rx="5" fill="var(--bad)"/>
+    <text x="589" y="33" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--on-accent)">len(box) == 4 !</text>
+
+    <rect x="24" y="54" width="98" height="28" rx="6" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="1.3"/>
+    <text x="73" y="72" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--text-strong)">clipboard</text>
+    <rect x="24" y="96" width="98" height="28" rx="6" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.4"/>
+    <text x="73" y="114" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--text-strong)">box._items</text>
+
+    <path d="M 122 68 C 142 68, 142 84, 158 84" fill="none" stroke="var(--border-strong)" stroke-width="1.6" marker-end="url(#v2-arr-muted)"/>
+    <path d="M 122 110 C 142 110, 142 94, 158 94" fill="none" stroke="var(--bad)" stroke-width="1.8" marker-end="url(#v2-arr-bad)"/>
+
+    <rect x="164" y="54" width="334" height="68" rx="8" fill="var(--bg-2)" stroke="var(--border-strong)" stroke-width="1.3"/>
+    <rect x="172" y="64" width="74" height="34" rx="5" fill="var(--surface)" stroke="var(--border-strong)"/>
+    <text x="209" y="85" text-anchor="middle" font-size="11.5" fill="var(--text-strong)">"mug"</text>
+    <text x="209" y="114" text-anchor="middle" font-size="10.5" fill="var(--muted)">0</text>
+    <rect x="252" y="64" width="76" height="34" rx="5" fill="var(--surface)" stroke="var(--border-strong)"/>
+    <text x="290" y="85" text-anchor="middle" font-size="11.5" fill="var(--text-strong)">"lamp"</text>
+    <text x="290" y="114" text-anchor="middle" font-size="10.5" fill="var(--muted)">1</text>
+    <rect x="334" y="64" width="76" height="34" rx="5" fill="var(--surface)" stroke="var(--border-strong)"/>
+    <text x="372" y="85" text-anchor="middle" font-size="11.5" fill="var(--text-strong)">"book"</text>
+    <text x="372" y="114" text-anchor="middle" font-size="10.5" fill="var(--muted)">2</text>
+    <rect x="416" y="64" width="74" height="34" rx="5" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.8" stroke-dasharray="4 2"/>
+    <text x="453" y="85" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--text-strong)">"rug"</text>
+    <text x="453" y="114" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--bad)">3 (leak!)</text>
+
+    <text x="508" y="74" font-size="10.5" font-weight="700" fill="var(--bad)">clipboard.append("rug")</text>
+    <text x="508" y="95" font-family="var(--ui)" font-size="11.5" fill="var(--text-strong)">silently leaks into box</text>
+    <text x="508" y="115" font-size="11.5" fill="var(--bad)">box[-1] → "rug"</text>
+    <text x="28" y="148" font-family="var(--ui)" font-size="11.5" fill="var(--muted)">Two sticky notes on one list: changing clipboard outside changes box inside (length 3 → 4).</text>
+
+    <rect x="14" y="176" width="652" height="168" rx="10" fill="var(--surface)" stroke="var(--ok)" stroke-width="1.8"/>
+    <text x="28" y="198" font-family="var(--ui)" font-size="12.5" font-weight="700" fill="var(--ok)">SAFE: self._items = list(items) (sealed snapshot copy)</text>
+    <rect x="526" y="182" width="126" height="22" rx="5" fill="var(--ok)"/>
+    <text x="589" y="197" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--on-accent)">len(box) == 3</text>
+
+    <rect x="24" y="216" width="98" height="28" rx="6" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="1.3"/>
+    <text x="73" y="234" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--text-strong)">clipboard</text>
+    <line x1="122" y1="230" x2="158" y2="230" stroke="var(--border-strong)" stroke-width="1.6" marker-end="url(#v2-arr-muted)"/>
+
+    <rect x="164" y="211" width="334" height="38" rx="7" fill="var(--bg-2)" stroke="var(--border-strong)" stroke-width="1.2"/>
+    <rect x="172" y="216" width="74" height="28" rx="5" fill="var(--surface)" stroke="var(--border-strong)"/>
+    <text x="209" y="234" text-anchor="middle" font-size="11.5" fill="var(--text-strong)">"mug"</text>
+    <rect x="252" y="216" width="76" height="28" rx="5" fill="var(--surface)" stroke="var(--border-strong)"/>
+    <text x="290" y="234" text-anchor="middle" font-size="11.5" fill="var(--text-strong)">"lamp"</text>
+    <rect x="334" y="216" width="76" height="28" rx="5" fill="var(--surface)" stroke="var(--border-strong)"/>
+    <text x="372" y="234" text-anchor="middle" font-size="11.5" fill="var(--text-strong)">"book"</text>
+    <rect x="416" y="216" width="74" height="28" rx="5" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.5"/>
+    <text x="453" y="234" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--text-strong)">"rug"</text>
+    <text x="512" y="234" font-family="var(--ui)" font-size="11.5" fill="var(--muted)">caller list: len 4</text>
+
+    <rect x="24" y="272" width="98" height="28" rx="6" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.5"/>
+    <text x="73" y="290" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--text-strong)">box._items</text>
+    <line x1="122" y1="286" x2="158" y2="286" stroke="var(--ok)" stroke-width="2" marker-end="url(#v2-arr-ok)"/>
+
+    <rect x="164" y="260" width="254" height="58" rx="8" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.6"/>
+    <rect x="172" y="268" width="74" height="28" rx="5" fill="var(--surface)" stroke="var(--ok)"/>
+    <text x="209" y="286" text-anchor="middle" font-size="11.5" fill="var(--text-strong)">"mug"</text>
+    <text x="209" y="311" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--text-strong)">0</text>
+    <rect x="252" y="268" width="76" height="28" rx="5" fill="var(--surface)" stroke="var(--ok)"/>
+    <text x="290" y="286" text-anchor="middle" font-size="11.5" fill="var(--text-strong)">"lamp"</text>
+    <text x="290" y="311" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--text-strong)">1</text>
+    <rect x="334" y="268" width="76" height="28" rx="5" fill="var(--surface)" stroke="var(--ok)"/>
+    <text x="372" y="286" text-anchor="middle" font-size="11.5" fill="var(--text-strong)">"book"</text>
+    <text x="372" y="311" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--text-strong)">2 / -1</text>
+
+    <text x="434" y="282" font-size="11.5" font-weight="700" fill="var(--text-strong)">box[0] → "mug"</text>
+    <text x="434" y="303" font-size="11.5" font-weight="700" fill="var(--ok)">box[-1] → "book"</text>
+    <text x="28" y="334" font-family="var(--ui)" font-size="11.5" fill="var(--muted)">Separate binder copy: clipboard can grow freely while OrderBox stays sealed at length 3.</text>
+  </svg>
+  <div class="cap">After <code>clipboard.append("rug")</code>: storing <code>items</code> directly lets edits leak into <code>box</code> (length 3 → 4), while <code>list(items)</code> seals an independent snapshot where <code>box[0]</code> stays <code>"mug"</code> and <code>box[-1]</code> stays <code>"book"</code>.</div>
+</div>
+
+<div class="check" id="check-dataset-snapshot">
+  <p class="q">Starting from <code>raw = ["pen", "tape", "glue"]</code>, you run <code>box = OrderBox(raw)</code> then <code>raw.append("ink")</code>. What are <code>(len(box), box[-1])</code> for <code>self._items = items</code> vs. <code>self._items = list(items)</code>?</p>
+  <div class="opts">
+    <button><code>(3, "glue")</code> in both cases — attributes copy lists automatically</button>
+    <button data-correct><code>(4, "ink")</code> with <code>items</code>, vs. <code>(3, "glue")</code> with <code>list(items)</code></button>
+    <button><code>(4, "glue")</code> with <code>items</code> — <code>[-1]</code> ignores appended items</button>
+  </div>
+  <div class="fb right"><p><code>self._items = items</code> shares <code>raw</code>, so appending <code>"ink"</code> makes <code>len(box) == 4</code> and <code>box[-1] == "ink"</code>. <code>list(items)</code> keeps the original 3 items sealed.</p></div>
+  <div class="fb wrong"><p>From <code>00.03</code>: assigning a list never copies it. Calling <code>list(items)</code> builds a fresh list so caller appends stay outside <code>box</code>.</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s5"><span class="sec-num">5</span>How do you serve 1,000,000 items in mini-batches without copying the pile?</h2>
+
+<p>Suppose <code>1,000,000</code> parcels arrive and you ship crates of <code>32</code>. An eager function using <code>return</code> builds all <code>31,250</code> crates upfront before step 1 even runs — stopping after 5 test steps wastes <code>31,245</code> crates:</p>
+
+<pre><code>def pack_all_eager(items, crate_size):
+    crates = []
+    for i in range(0, len(items), crate_size):
+        crates.append(list(items[i : i + crate_size]))
+    return crates  # builds ALL crates before step 1 runs!</code></pre>
+
+<p>Desk tool #4 — the <b>One-Crate-at-a-Time Loader</b> — swaps <code>return</code> for <b><code>yield</code></b>, turning the function into a <b>generator</b> (<code>inspect.isgenerator(gen) == True</code>, with a <code>__next__</code> method). Calling <code>pack_crates(...)</code> hands back a paused generator without running the loop yet. Each <code>next(gen)</code> or <code>for</code> step packs one fresh <code>list</code> slice, yields it, and freezes right on <code>yield</code>:</p>
+
+<pre><code>import inspect
+
+def pack_crates(items, crate_size):
+    if crate_size &lt;= 0:
+        raise ValueError("crate_size must be positive")
+    for i in range(0, len(items), crate_size):
+        yield list(items[i : i + crate_size])
+
+gen = pack_crates([4, 8, 12, 16, 20], 2)
+print(inspect.isgenerator(gen))  # True
+print(next(gen))                 # [4, 8]
+print(list(gen))                 # [[12, 16], [20]]</code></pre>
+
+<div class="figure">
+  <div id="viz-yield-player"></div>
+  <div class="cap">Press <b>▶| (Next)</b> to step each <code>next(gen)</code> call, then toggle <b>crate_size = 2</b> vs. <b>crate_size = 3</b>. Watch <code>yield</code> keep only one crate alive, preserve trailing partial crates (<code>[20]</code> or <code>[16, 20]</code>), and yield <code>[]</code> on a second pass.</div>
+</div>
+
+<p>Five edge cases to verify on any batch generator:</p>
+<ol>
+  <li><b>Trailing partial batch kept:</b> Slicing <code>items[4:6]</code> on 5 items returns <code>[20]</code> without dropping it.</li>
+  <li><b>Fresh <code>list</code> slices:</b> Wrapping with <code>list(...)</code> returns a fresh <code>list</code> even when given a <code>tuple</code>.</li>
+  <li><b>Empty input:</b> <code>list(pack_crates([], 3))</code> yields zero batches (<code>[]</code>).</li>
+  <li><b>Lazy <code>ValueError</code>:</b> <code>pack_crates([1, 2], 0)</code> stays paused before line 1; <code>ValueError</code> fires only when <code>next(...)</code> or <code>list(...)</code> starts iterating.</li>
+  <li><b>Single-pass exhaustion:</b> A generator never rewinds; a second <code>list(gen)</code> returns <code>[]</code>.</li>
+</ol>
+
+<pre><code>print(list(pack_crates([], 3)))  # [] (0 crates)
+
+bad = pack_crates([1, 2], 0)     # paused -- no error yet!
+# list(bad)                      # NOW raises ValueError!
+
+gen = pack_crates([4, 8, 12], 2)
+print(list(gen))  # [[4, 8], [12]]
+print(list(gen))  # [] (exhausted after one pass!)</code></pre>
+
+<div class="keyidea"><b><code>return</code> vs. <code>yield</code>:</b> <code>return</code> builds every batch upfront and exits once; <code>yield</code> hands back one slice at a time, freezes loop state between pulls, and ends after one pass.</div>
+
+<details class="aside another">
+  <summary>Explain it another way: Bookmarking a cookbook</summary>
+  <p><code>return</code> cooks every page onto the counter before serving. <code>yield</code> cooks one dish, slips a bookmark at that page, and waits until <code>next(gen)</code> asks for the next dish — stopping once the book ends.</p>
+</details>
+
+<div class="check" id="check-yield-lazy-error">
+  <p class="q">With <code>if crate_size &lt;= 0: raise ValueError(...)</code> at the top of <code>pack_crates</code>, you run line 1: <code>g = pack_crates([4, 8], 0)</code> and line 2: <code>first = next(g)</code>. Which line raises <code>ValueError</code>?</p>
+  <div class="opts">
+    <button>Line 1 raises <code>ValueError</code> before returning <code>g</code></button>
+    <button data-correct>Line 2 raises <code>ValueError</code> — line 1 returns a paused generator without running its body yet</button>
+    <button>Neither line raises; it yields <code>[]</code></button>
+  </div>
+  <div class="fb right"><p>Calling a generator function parks before line 1. The <code>crate_size &lt;= 0</code> guard runs only when <code>next(g)</code>, <code>list(g)</code>, or a <code>for</code> loop pulls the first item.</p></div>
+  <div class="fb wrong"><p>Unlike <code>return</code> functions, a <code>yield</code> function delays its entire body — input checks included — until iteration begins.</p></div>
+</div>
+
+<div class="check" id="check-generator-exhaustion">
+  <p class="q">You run <code>gen = pack_crates([4, 8, 12, 16, 20], 2)</code>, then <code>first = list(gen)</code>, then <code>second = list(gen)</code>. What are <code>first</code> and <code>len(second)</code>?</p>
+  <div class="opts">
+    <button><code>first == [[4, 8], [12, 16], [20]]</code> and <code>len(second) == 3</code> (auto-rewinds)</button>
+    <button data-correct><code>first == [[4, 8], [12, 16], [20]]</code> and <code>len(second) == 0</code> (exhausted)</button>
+    <button><code>first == [[4, 8], [12, 16]]</code> (drops <code>[20]</code>) and <code>len(second) == 1</code></button>
+  </div>
+  <div class="fb right"><p><code>first</code> consumes all three crates (keeping <code>[20]</code>) and parks <code>gen</code> at the end. Call <code>pack_crates(...)</code> again for a fresh pass.</p></div>
+  <div class="fb wrong"><p>Generators move forward once and never rewind. After <code>first</code> drains every crate through <code>[20]</code>, <code>gen</code> is spent and yields nothing more.</p></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s6"><span class="sec-num">6</span>Putting the dispatch desk together — and when to skip classes</h2>
+
+<p>Combine <code>OrderBox</code>, <code>pack_crates</code>, and <code>FeeMeter</code> with <code>00.04</code>'s <code>enumerate</code> and a list comprehension for a ten-line mini training pass (passing <code>orders</code> directly into <code>pack_crates</code> works because <code>self._items[idx]</code> forwards both single integer indexes and slices like <code>items[i : i + crate_size]</code> to the inner <code>list</code>):</p>
+
+<pre><code>weights_raw = [1.0, 2.0, 3.0, 4.0, 5.0]
+orders = OrderBox(weights_raw)        # sealed snapshot
+tariff = FeeMeter(rate=2.0, base=1.0) # callable rule
+
+for step, crate in enumerate(pack_crates(orders, crate_size=2)):
+    fees = [tariff(w) for w in crate]
+    print(f"step {step}: {crate} -&gt; {fees}")
+# step 0: [1.0, 2.0] -&gt; [3.0, 5.0]
+# step 1: [3.0, 4.0] -&gt; [7.0, 9.0]
+# step 2: [5.0] -&gt; [11.0]</code></pre>
+
+<div class="callout warn">
+  <b>Where this analogy breaks:</b> Paper binders and human loaders diverge from Python in three ways. First, <code>list(items)</code> is a <b>shallow</b> copy — it clones the outer list, not mutable lists or dicts nested inside it (inner edits still alias per <code>00.03</code>). Second, unlike a fixed scale, <code>__call__</code> can update internal state or run bookkeeping hooks (PyTorch uses that when you run <code>layer(x)</code>). Third, a generator is not an active worker — it runs zero lines until pulled (making <code>crate_size=0</code> raise lazily), stays frozen between pulls, and expires after one pass.
+</div>
+
+<p>Here is the 1-to-1 bridge from our Parcel Dispatch Desk to the <code>00.08</code> exercise and the stages ahead:</p>
+
+<div class="table-wrap"><table>
+  <thead>
+    <tr>
+      <th>Desk Tool</th>
+      <th>Python Hook</th>
+      <th><code>00.08</code> Exercise</th>
+      <th>Next in the Book</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>Step2D</code></td>
+      <td><code>__init__</code>, <code>__repr__</code>, <code>__eq__</code>, <code>__add__</code>, <code>__mul__</code></td>
+      <td><code>Vec2D</code></td>
+      <td><code>01.01</code> vectors &amp; Stage 1 <code>02.02</code> <code>Value</code></td>
+    </tr>
+    <tr>
+      <td><code>FeeMeter</code></td>
+      <td><code>__init__</code> + <code>__call__</code></td>
+      <td><code>LinearScaler</code></td>
+      <td>PyTorch <code>nn.Module</code> <code>layer(x)</code> (<code>02.04</code>)</td>
+    </tr>
+    <tr>
+      <td><code>OrderBox</code></td>
+      <td><code>list(items)</code>, <code>__len__</code>, <code>__getitem__</code></td>
+      <td><code>TinyDataset</code></td>
+      <td>PyTorch <code>Dataset</code> (<code>len(ds)</code>, <code>ds[i]</code>)</td>
+    </tr>
+    <tr>
+      <td><code>pack_crates</code></td>
+      <td><code>yield</code> generator</td>
+      <td><code>batch_iter</code></td>
+      <td>PyTorch <code>DataLoader</code></td>
+    </tr>
+  </tbody>
+</table></div>
+
+<h3>When NOT to write a class or generator</h3>
+<ul>
+  <li><b>Stateless math:</b> When nothing needs to persist across calls (like <code>00.07</code>'s <code>mean</code> or <code>min_max_scale</code>), a plain function is cleaner than a class.</li>
+  <li><b>Small reusable sequences:</b> If you need <code>len(batches)</code>, <code>batches[-1]</code>, or multiple passes over small data, return a plain <code>list</code> instead of a generator.</li>
+  <li><b>Unclear operators:</b> Overload <code>+</code> and <code>*</code> only when the math meaning is unmistakable (vectors, matrices, autograd values); otherwise use a named method.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="summary"><span class="sec-num">✓</span>What to remember</h2>
+<ol>
+  <li><b>Small classes bundle state and rules:</b> <code>__init__</code> saves fields on <code>self</code> (using <code>float()</code> when needed) and <code>__repr__</code> returns a readable <code>"ClassName(...)"</code> string.</li>
+  <li><b>Dunders power built-in syntax:</b> <code>==</code> calls <code>__eq__</code> (guard with <code>isinstance</code>), <code>+</code> calls <code>__add__</code>, <code>*</code> calls <code>__mul__</code> (plus <code>__rmul__</code> for <code>3 * a</code>), and <code>obj(x)</code> calls <code>__call__</code>.</li>
+  <li><b>Arithmetic dunders stay immutable:</b> Return a fresh object from <code>__add__</code> and <code>__mul__</code> so <code>self</code> and <code>other</code> never mutate silently.</li>
+  <li><b>Containers seal inputs on arrival:</b> <code>__len__</code> and <code>__getitem__</code> support <code>len(box)</code>, <code>box[0]</code>, and <code>box[-1]</code>; <code>self._items = list(items)</code> blocks caller mutations like <code>raw.append(...)</code>.</li>
+  <li><b><code>yield</code> serves lazy single-pass batches:</b> A generator (<code>inspect.isgenerator</code>) yields fresh <code>list</code> slices one at a time, keeps trailing partial batches, triggers <code>ValueError</code> when iteration starts, and runs once.</li>
+  <li><b>Use the lightest tool that fits:</b> Plain functions for stateless math, plain lists for small reusable collections, and classes or generators when state, syntax, or laziness pays off.</li>
+</ol>
+
+<div class="review" id="review"></div>
+
+<h2 id="exercises"><span class="sec-num">✎</span>Exercises</h2>
+
+<div class="exercise">
+  <div class="tier core">Core · local CPU code (pytest)</div>
+  <h4>Implement <code>python_classes_and_batches.py</code></h4>
+  <p>Open <a href="../../../../exercises/00-python-for-ml/python_classes_and_batches.py"><code>python_classes_and_batches.py</code></a> and build <code>Vec2D</code> (<code>__init__</code>, <code>__repr__</code> starting with <code>"Vec2D("</code>, <code>__eq__</code>, <code>__add__</code>, <code>__mul__</code>), callable <code>LinearScaler</code>, snapshot-safe <code>TinyDataset</code>, and lazy <code>batch_iter</code>. Answer the three "Say it out loud" prompts at the top of the file, then verify with:</p>
+  <pre class="plain"><code>python3 -m pytest -k python_classes_and_batches</code></pre>
+</div>
+
+<nav class="chapter-nav">
+  <a href="math-in-plain-python.html"><small>← Previous</small>Doing math in plain Python: formulas, stats &amp; 2D grids</a>
+  <a class="next" href="../../01-matrices-and-gpus/concepts/vectors-and-dot-products.html"><small>Phase 0B →</small>Vectors, distance &amp; dot products (Python → NumPy)</a>
+</nav>
+
+</main>
+<script>
+(function () {
+  // 1. Interactive Callable FeeMeter Probe (#viz-callable)
+  const callHost = document.getElementById("viz-callable");
+  if (callHost && window.V) {
+    const PRESETS = [
+      { label: "rate=2.5, base=1.0", rate: 2.5, base: 1.0, weight: 4.0 },
+      { label: "rate=2.0, base=1.0", rate: 2.0, base: 1.0, weight: 3.0 },
+      { label: "rate=3.0, base=-2.0", rate: 3.0, base: -2.0, weight: 5.0 },
+    ];
+    let rate = 2.5, base = 1.0, weight = 4.0;
+    const fmt = (n) => (Number.isInteger(n) ? n.toFixed(1) : String(n));
+
+    const stage = V.el("div", { class: "viz-stage" });
+    const presetRow = V.el("div", { style: "display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px" });
+    const grid = V.el("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:12px" });
+
+    const rSlider = V.el("input", { type: "range", min: "-3", max: "4", step: "0.5", value: String(rate), style: "flex:1 1 90px;min-width:80px;accent-color:var(--brand)" });
+    const bSlider = V.el("input", { type: "range", min: "-3", max: "4", step: "0.5", value: String(base), style: "flex:1 1 90px;min-width:80px;accent-color:var(--brand)" });
+    const wSlider = V.el("input", { type: "range", min: "0", max: "6", step: "0.5", value: String(weight), style: "flex:1 1 90px;min-width:80px;accent-color:var(--accent)" });
+
+    const initCode = V.el("div", { style: "font:600 0.84rem var(--mono);color:var(--text-strong);margin:4px 0 10px;overflow-wrap:anywhere" });
+    const rVal = V.el("b", { style: "font-family:var(--mono);min-width:3.2em;text-align:right" });
+    const bVal = V.el("b", { style: "font-family:var(--mono);min-width:3.2em;text-align:right" });
+    const callCode = V.el("div", { style: "font:700 0.94rem var(--mono);color:var(--accent);margin:4px 0 10px" });
+    const wVal = V.el("b", { style: "font-family:var(--mono);min-width:3.2em;text-align:right" });
+
+    const chipRow = V.el("div", { style: "display:flex;flex-wrap:wrap;gap:6px;margin-top:8px" },
+      [0.0, 2.0, 4.0, 5.0].map((v) => V.el("button", {
+        type: "button", class: "btn", style: "padding:4px 8px;font-size:0.78rem;font-family:var(--mono)",
+        onclick: () => { weight = v; wSlider.value = String(weight); paint(); }
+      }, `weight=${fmt(v)}`))
+    );
+
+    const selfCard = V.el("div", { style: "padding:12px 14px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border-strong);min-width:0" },
+      V.el("div", { style: "font:700 0.7rem var(--mono);color:var(--brand);letter-spacing:0.06em" }, "STORED ON self (__init__)"),
+      initCode,
+      V.el("label", { class: "small", style: "display:flex;align-items:center;gap:8px;margin-bottom:6px" },
+        V.el("span", { style: "font-family:var(--mono);color:var(--muted);min-width:2.8em" }, "rate"), rSlider, rVal),
+      V.el("label", { class: "small", style: "display:flex;align-items:center;gap:8px" },
+        V.el("span", { style: "font-family:var(--mono);color:var(--muted);min-width:2.8em" }, "base"), bSlider, bVal)
+    );
+
+    const callCard = V.el("div", { style: "padding:12px 14px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--accent);min-width:0" },
+      V.el("div", { style: "font:700 0.7rem var(--mono);color:var(--accent);letter-spacing:0.06em" }, "PASSED PER CALL (__call__)"),
+      callCode,
+      V.el("label", { class: "small", style: "display:flex;align-items:center;gap:8px" },
+        V.el("span", { style: "font-family:var(--mono);color:var(--muted);min-width:3.4em" }, "weight"), wSlider, wVal),
+      chipRow
+    );
+
+    grid.append(selfCard, callCard);
+    const trace = V.el("div", { style: "padding:10px 14px;border-radius:var(--radius);background:var(--accent-soft);border:1px solid var(--accent);font:0.86rem/1.6 var(--mono);color:var(--text-strong);overflow-wrap:anywhere" });
+    const note = V.el("div", { class: "small muted", style: "margin-top:8px" });
+
+    function paint() {
+      presetRow.replaceChildren(
+        V.el("span", { class: "small muted" }, "Presets:"),
+        ...PRESETS.map((p) => V.el("button", {
+          type: "button",
+          class: "btn" + (rate === p.rate && base === p.base ? " primary" : ""),
+          onclick: () => {
+            rate = p.rate; base = p.base; weight = p.weight;
+            rSlider.value = String(rate); bSlider.value = String(base); wSlider.value = String(weight);
+            paint();
+          }
+        }, p.label))
+      );
+      const fee = rate * weight + base;
+      const bTerm = base >= 0 ? `+ ${fmt(base)}` : `- ${fmt(Math.abs(base))}`;
+      initCode.textContent = `meter = FeeMeter(rate=${fmt(rate)}, base=${fmt(base)})`;
+      rVal.textContent = fmt(rate);
+      bVal.textContent = fmt(base);
+      callCode.textContent = `meter(${fmt(weight)})`;
+      wVal.textContent = fmt(weight);
+      trace.replaceChildren(
+        `meter(${fmt(weight)}) → meter.__call__(${fmt(weight)}) → ${fmt(rate)} * ${fmt(weight)} ${bTerm} = `,
+        V.el("span", { style: "display:inline-block;padding:1px 8px;border-radius:6px;background:var(--ok);color:var(--on-accent);font-weight:700" }, fmt(fee))
+      );
+      note.textContent = `Same instance reused: self.rate (${fmt(rate)}) and self.base (${fmt(base)}) — the w and b from 00.07 — stay pinned while weight changes.`;
+    }
+
+    rSlider.addEventListener("input", () => { rate = Number(rSlider.value); paint(); });
+    bSlider.addEventListener("input", () => { base = Number(bSlider.value); paint(); });
+    wSlider.addEventListener("input", () => { weight = Number(wSlider.value); paint(); });
+    stage.append(presetRow, grid, trace, note);
+    callHost.append(stage);
+    paint();
+  }
+
+  // 2. Lazy Crate Generator V.player (#viz-yield-player)
+  const genHost = document.getElementById("viz-yield-player");
+  if (genHost && window.V) {
+    const ITEMS = [4, 8, 12, 16, 20];
+
+    function buildFrames(cs) {
+      const eager = [];
+      for (let s = 0; s < ITEMS.length; s += cs) eager.push(ITEMS.slice(s, s + cs));
+      const frames = [];
+      frames.push({
+        cs, eager, phase: "created", badge: "CREATED (paused before body)", badgeKind: "warn",
+        call: `gen = pack_crates(items, ${cs})`, start: null, end: null, yielded: null, partial: false,
+        msg: `<b>gen = pack_crates(items, ${cs})</b> returns a generator object right away without running its body. <b>0 crates</b> exist yet — compare with eager code already holding all ${ITEMS.length} items across ${eager.length} lists.`
+      });
+      for (let idx = 0; idx < eager.length; idx++) {
+        const s = idx * cs;
+        const batch = eager[idx];
+        const partial = batch.length < cs;
+        const resumed = idx > 0;
+        frames.push({
+          cs, eager, phase: "yield",
+          badge: partial ? "PAUSED AT yield (partial crate)" : (resumed ? "RESUMED → PAUSED AT yield" : "PAUSED AT yield"),
+          badgeKind: partial ? "ok" : "accent",
+          call: `next(gen)  # call #${idx + 1}`,
+          start: s, end: s + batch.length, yielded: batch, partial,
+          msg: partial
+            ? `Call #${idx + 1} slices <code>items[${s}:${s + cs}]</code>. Python slicing stops cleanly at the end, yielding the <b>trailing partial crate</b> <code>[${batch.join(", ")}]</code> instead of dropping it.`
+            : (resumed
+                ? `Call #${idx + 1} resumes right after <code>yield</code>, advances to <code>i = ${s}</code>, and hands out fresh list <code>[${batch.join(", ")}]</code>. The previous crate is already released.`
+                : `Call #1 enters the body, slices <code>items[0:${cs}]</code> into fresh list <code>[${batch.join(", ")}]</code>, yields it, and <b>freezes</b> right on the <code>yield</code> line.`)
+        });
+      }
+      frames.push({
+        cs, eager, phase: "exhausted", badge: "EXHAUSTED (StopIteration)", badgeKind: "bad-soft",
+        call: `next(gen)  # call #${eager.length + 1}`, start: ITEMS.length, end: ITEMS.length, yielded: null, partial: false,
+        msg: `The loop reaches the end of <code>range(0, ${ITEMS.length}, ${cs})</code> and raises <code>StopIteration</code>. A <code>for</code> loop catches that signal and exits cleanly.`
+      });
+      frames.push({
+        cs, eager, phase: "second-pass", badge: "EXHAUSTED — 2nd pass = 0 crates!", badgeKind: "bad-solid",
+        call: "list(gen)  # looping again!", start: ITEMS.length, end: ITEMS.length, yielded: [], partial: false,
+        msg: `<b>Single-pass exhaustion:</b> looping over the same <code>gen</code> a second time returns <code>[]</code> (0 crates) because the loader already reached the end. Call <code>pack_crates(items, ${cs})</code> again for a fresh pass.`
+      });
+      return frames;
+    }
+
+    const badgeStyle = (kind) => {
+      if (kind === "warn") return "background:var(--warn-soft);border:1px solid var(--warn);color:var(--text-strong)";
+      if (kind === "accent") return "background:var(--accent-soft);border:1px solid var(--accent);color:var(--text-strong)";
+      if (kind === "ok") return "background:var(--ok-soft);border:1px solid var(--ok);color:var(--text-strong)";
+      if (kind === "bad-soft") return "background:var(--bad-soft);border:1px solid var(--bad);color:var(--text-strong)";
+      return "background:var(--bad);border:1px solid var(--bad);color:var(--on-accent)";
+    };
+
+    function draw(f, stage) {
+      const topBar = V.el("div", { style: "display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px" },
+        V.el("code", { style: "font-weight:600;color:var(--text-strong)" }, f.call),
+        V.el("span", { style: `display:inline-block;padding:3px 9px;border-radius:6px;font:700 0.74rem var(--mono);${badgeStyle(f.badgeKind)}` }, f.badge)
+      );
+
+      const ptrs = {};
+      if (f.phase === "created") ptrs[0] = "ready";
+      else if (f.phase === "yield") ptrs[f.start] = `i=${f.start}`;
+
+      const inputRow = V.el("div", { style: "margin-bottom:12px" },
+        V.el("div", { class: "small muted", style: "margin-bottom:4px" }, `Input sequence (items, len = ${ITEMS.length}, crate_size = ${f.cs})`),
+        V.cells(ITEMS, {
+          ptrs,
+          cls: (i) => {
+            if (f.phase === "exhausted" || f.phase === "second-pass") return "dim";
+            if (f.phase === "yield") {
+              if (i >= f.start && i < f.end) return f.partial ? "cmp" : "hl";
+              if (i < f.start) return "done";
+            }
+            return "";
+          }
+        })
+      );
+
+      const liveBody = f.phase === "yield"
+        ? V.cells(f.yielded, { idx: false, cls: () => (f.partial ? "cmp" : "win") })
+        : V.el("div", { style: "font:600 0.84rem var(--mono);color:var(--muted);padding:8px 0" },
+            f.phase === "created" ? "(none yet — paused before body)" : (f.phase === "second-pass" ? "[]  (0 crates yielded)" : "(StopIteration — stream closed)"));
+
+      const liveCount = f.phase === "yield" ? `${f.yielded.length} item${f.yielded.length === 1 ? "" : "s"} alive` : "0 items alive";
+      const lazyCard = V.el("div", { style: "padding:10px 12px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--accent);min-width:0" },
+        V.el("div", { style: "display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px" },
+          V.el("span", { style: "font:700 0.74rem var(--mono);color:var(--accent)" }, "LAZY GENERATOR (yield)"),
+          V.el("span", { class: "small muted" }, liveCount)),
+        liveBody
+      );
+
+      const eagerChips = V.el("div", { style: "display:flex;flex-wrap:wrap;gap:6px;padding:4px 0" },
+        f.eager.map((b) => V.el("span", { style: "padding:4px 8px;border-radius:6px;background:var(--surface-2);border:1px solid var(--border-strong);font:600 0.8rem var(--mono);color:var(--text-strong)" }, `[${b.join(", ")}]`))
+      );
+      const eagerCard = V.el("div", { style: "padding:10px 12px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border-strong);min-width:0" },
+        V.el("div", { style: "display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px" },
+          V.el("span", { style: "font:700 0.74rem var(--mono);color:var(--muted)" }, "EAGER LIST-OF-LISTS (return)"),
+          V.el("span", { class: "small muted" }, `${ITEMS.length} items (${f.eager.length} lists)`)),
+        eagerChips
+      );
+
+      const compare = V.el("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px" }, lazyCard, eagerCard);
+      stage.append(topBar, inputRow, compare);
+    }
+
+    const btn2 = V.el("button", { type: "button", class: "btn primary" }, "crate_size = 2");
+    const btn3 = V.el("button", { type: "button", class: "btn" }, "crate_size = 3");
+    const bsGroup = V.el("div", { style: "display:inline-flex;gap:6px;flex-wrap:wrap" }, btn2, btn3);
+    const player = V.player(genHost, { frames: buildFrames(2), draw, speed: 1100, extraControls: [bsGroup] });
+    const setCS = (cs) => {
+      btn2.className = "btn" + (cs === 2 ? " primary" : "");
+      btn3.className = "btn" + (cs === 3 ? " primary" : "");
+      player.load(buildFrames(cs));
+    };
+    btn2.addEventListener("click", () => setCS(2));
+    btn3.addEventListener("click", () => setCS(3));
+  }
+})();
+</script>
+</body>
+</html>

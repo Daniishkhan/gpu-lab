@@ -22,8 +22,8 @@ Check the chapter strictly against `curriculum.json`:
 **Never verify arithmetic in your head.** Run `python3` to recompute:
 - Every FLOP count, byte count, GB conversion (check `10^9` vs `2^30` consistency!), parameter count, KV-cache footprint, VRAM total, quantization rounding error, sample rate / Nyquist limit, and latency budget sum.
 - Every pure-Python / NumPy code block shown in the chapter — execute it and confirm the output matches the prose and diagrams exactly.
-- Every interactive JS widget formula in `<script>` — verify its math matches both the chapter prose and the matching CPU exercise in `sections/*/exercises/`.
-- Every Gemma 4, PyTorch, TRL, PEFT, vLLM, SGLang, Qwen3-TTS, Chatterbox, Pipecat, LiveKit, or full-duplex S2S claim — cross-check against `reference-cheatsheet.html`, `labs/*.md`, and official docs when uncertain. Flag outdated APIs or unverified numbers.
+- Every interactive JS widget formula in `<script>` — verify its math matches both the chapter prose and the matching CPU exercise in `exercises/`.
+- Every Gemma 4, PyTorch, TRL, PEFT, vLLM, SGLang, Qwen3-TTS, Chatterbox, Pipecat, LiveKit, or full-duplex S2S claim — cross-check against `book/reference-cheatsheet.html`, `gpu-labs/`, and official docs when uncertain. Flag outdated APIs or unverified numbers.
 
 ## Lens 3: Production Builder (Real Gotchas & Boundaries)
 

@@ -1,6 +1,6 @@
 # Templates & House Style (`gpu/lab`)
 
-`python3 tools/new.py ...` copies these templates into the right section and regenerates `assets/curriculum.js`. Full authoring standards live in [`GEMINI.md`](../GEMINI.md) and [`.agents/skills/`](../.agents/skills/).
+`python3 tools/new.py ...` copies these templates into `book/sections/`, `exercises/`, `gpu-labs/`, or `journal/` and regenerates `book/assets/curriculum.js`. Full authoring standards live in [`GEMINI.md`](../GEMINI.md) and [`.agents/skills/`](../.agents/skills/).
 
 ## Book Chapters (`concept.html`)
 - First-principles, visual, analogy-first chapters built via the **`write-chapter` → `visuals-and-layout` → `review-chapter`** skill pipeline.

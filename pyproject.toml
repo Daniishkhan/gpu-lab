@@ -5,8 +5,8 @@ description = "Zero-abstraction ML systems lab: from Python, matrices & GPUs to 
 requires-python = ">=3.10"
 
 [tool.pytest.ini_options]
-# CPU exercises live next to their tests in sections/<NN>/exercises/.
+# CPU exercises live next to their tests in exercises/<NN>-<slug>/.
 # pytest puts each test file's folder on sys.path, so every module name must be unique repo-wide.
-testpaths = ["sections"]
+testpaths = ["exercises"]
 python_files = ["test_*.py"]
 addopts = "-q --no-header"

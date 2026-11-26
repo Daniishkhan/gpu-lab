@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="topic" content="00.03">
+  <title>How Python holds data in memory (names, copies &amp; closures)</title>
+  <script>try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("gpu-lab:theme")) || "dark"; } catch (e) {}</script>
+  <link rel="stylesheet" href="../../../assets/style.css">
+  <script src="../../../assets/curriculum.js"></script>
+  <script src="../../../assets/viz.js"></script>
+  <script src="../../../assets/shell.js"></script>
+  <script src="../../../assets/book.js"></script>
+</head>
+<body data-root="../../.." data-section="00" data-page="concept">
+<main class="content book">
+
+<header class="chapter-head">
+  <div class="eyebrow">Phase 0A · Day 2 · Part 1</div>
+  <h1>How Python holds data in memory</h1>
+  <div class="meta"><span><span class="badge P0">P0</span> Python fluency</span><span>about 15 minutes</span><span>6 quick checks · 4 exercises</span></div>
+</header>
+
+<p>On Day 1, you got comfortable writing loops, functions, lists, tuples, dictionaries, and sets. Today we zoom in on one simple picture of how Python stores data in memory. Once you see this picture, Python's five sneakiest bugs — two names accidentally linked to the same list, surprise row edits, shared function defaults, loop functions reading the wrong value, and crashing loops — all make instant sense.</p>
+
+<div class="learn-list">
+  <h4>By the end of this chapter, you'll be comfortable with</h4>
+  <ol>
+    <li>Explaining why assigning <code>b = a</code> shares the same list instead of copying it, and knowing when to use <code>==</code> vs. <code>is</code>.</li>
+    <li>Telling the difference between editing a box in place (<code>a += [3]</code>) and creating a brand-new box (<code>a = a + [3]</code>).</li>
+    <li>Building independent 2D boards safely (avoiding the <code>[[0] * 3] * 3</code> trap) and choosing between shallow copies and <code>copy.deepcopy</code>.</li>
+    <li>Avoiding the mutable default argument trap (<code>bucket=[]</code>) by defaulting to <code>None</code>.</li>
+    <li>Fixing functions created inside loops and safely removing items while iterating.</li>
+  </ol>
+</div>
+
+<p class="muted small">Keep <a href="../../../python-cheatsheet.html#s7">Python Cheatsheet (§6–§7)</a> open whenever you want a quick lookup. This chapter builds directly on Day 1 (<a href="python-control-flow.html">Control flow</a> and <a href="python-data-structures.html">Built-in data structures</a>).</p>
+
+<!-- ============================================================ -->
+<h2 id="s1"><span class="sec-num">1</span>Names are sticky notes, values are boxes</h2>
+
+<p>In some languages, a variable is a fixed drawer that holds a copy of your data. Python does <b>not</b> work that way. In Python, every value (a number, string, list, or dictionary) lives in its own <b>box</b> in memory, and variable names are just <b>sticky notes</b> stuck onto those boxes. Remember from Day 1 that some boxes are editable — Python calls editable types <b>mutable</b> (<code>list</code>, <code>dict</code>, <code>set</code>) and locked types <b>immutable</b> (<code>int</code>, <code>float</code>, <code>str</code>, <code>tuple</code>).</p>
+
+<p>That means writing <code>backup = cart</code> never copies the shopping cart — it just sticks a second sticky note onto the <em>exact same box</em>:</p>
+
+<pre><code>cart = ["milk", "eggs"]
+backup = cart                  # NO copy! Both names point to the SAME list
+
+backup.append("bread")         # edits the shared list in place
+print(cart)                    # ["milk", "eggs", "bread"] — cart changed too!
+
+backup = ["tea"]               # peels backup off and sticks it on a NEW list
+print(cart)                    # ["milk", "eggs", "bread"] — cart is safe!</code></pre>
+
+<p>Watch the difference between <b>editing a shared box</b> (<code>backup.append("bread")</code>) and <b>moving a sticky note to a new box</b> (<code>backup = ["tea"]</code>):</p>
+
+<div class="figure">
+  <div id="viz-sticky-notes"></div>
+  <div class="cap">Switch the dropdown between editing the shared cart (<code>backup.append("bread")</code>) and rebinding <code>backup = ["tea"]</code>. Only editing in place changes what the other sticky note sees.</div>
+</div>
+
+<p>This also explains Python's two equality checks:</p>
+<ul>
+  <li><b><code>a == b</code></b> asks: <em>"Do these two boxes hold the same contents?"</em> (use this 99% of the time!).</li>
+  <li><b><code>a is b</code></b> asks: <em>"Are these two sticky notes stuck on the exact same box?"</em> Reserve <code>is</code> for checking <code>None</code> (<code>if val is None:</code>) — never use <code>is</code> to compare numbers or strings!</li>
+</ul>
+
+<pre><code>a = [1, 2]
+b = [1, 2]        # a brand-new list with the same numbers
+c = a             # another sticky note on a's list
+
+a == b            # True  — same contents
+a is b            # False — two separate boxes!
+a is c            # True  — exact same box</code></pre>
+
+<div class="keyidea">Assignment (<code>b = a</code>) never copies data — it adds another sticky note to the same object. Editing a shared list changes what every sticky note sees; reassigning (<code>b = ...</code>) moves only that one sticky note.</div>
+
+<div class="check" id="check-alias-rebind">
+  <p class="q">What does <code>songs</code> hold after these four lines run?</p>
+<pre><code>songs = ["Track A", "Track B"]
+queue = songs
+queue.append("Track C")
+queue = ["Track Z"]</code></pre>
+  <div class="opts">
+    <button><code>["Track A", "Track B"]</code> — assigning <code>queue = songs</code> copied the list</button>
+    <button data-correct><code>["Track A", "Track B", "Track C"]</code> — <code>append</code> edited the shared list, then <code>queue = ...</code> moved only <code>queue</code></button>
+    <button><code>["Track Z"]</code> — reassigning <code>queue</code> replaced <code>songs</code> too</button>
+  </div>
+  <div class="fb right"><p>Spot on! On line 3, both sticky notes sit on the same list, so <code>queue.append("Track C")</code> adds <code>"Track C"</code> to that shared list. On line 4, <code>queue = ["Track Z"]</code> peels <code>queue</code> off onto a brand-new list, leaving <code>songs</code> untouched with all three tracks.</p></div>
+  <div class="fb wrong"><p>Try tracing a tiny example with <code>a = [1]</code> and <code>b = a</code>: calling <code>b.append(2)</code> edits the single shared list to <code>[1, 2]</code>, so <code>a</code> sees <code>[1, 2]</code>. Next, writing <code>b = [9]</code> just moves the <code>b</code> sticky note onto a fresh box <code>[9]</code> — it never erases <code>a</code>'s box, so <code>a</code> stays <code>[1, 2]</code>.</p></div>
+</div>
+
+<p>The exact same sticky-note rule applies when you pass a variable into a function — and when you use <code>+=</code> on a list vs. a number.</p>
+
+<!-- ============================================================ -->
+<h2 id="s2"><span class="sec-num">2</span>Passing values to functions and the += surprise</h2>
+
+<p>When you pass a list or dictionary to a function, Python does <b>not</b> copy it either — the parameter name inside the function is just one more sticky note on the caller's object! That means if a function calls <code>items.append(...)</code> or <code>items.pop()</code>, the caller's list changes too:</p>
+
+<pre><code>def add_tax_item(cart):
+    cart.append("bag fee")      # edits the caller's list directly!
+
+my_cart = ["coffee"]
+add_tax_item(my_cart)
+print(my_cart)                  # ["coffee", "bag fee"]</code></pre>
+
+<p>If a function shouldn't change the caller's list, either build a fresh list or make a copy first (we'll see how in §3).</p>
+
+<p>Now watch one subtle difference between <code>+=</code> and <code>= ... + ...</code> on lists:</p>
+
+<pre><code>a = [1, 2]
+b = a
+a += [3]           # edits the list IN PLACE! Now BOTH a and b are [1, 2, 3]
+
+a = [1, 2]
+b = a
+a = a + [3]        # creates a NEW list [1, 2, 3] and moves a only; b stays [1, 2]!</code></pre>
+
+<p>Why does that happen? Because a <code>list</code> is mutable, Python lets <code>a += [3]</code> extend the existing list in place. On <b>immutable</b> (locked) types (<code>int</code>, <code>float</code>, <code>str</code>, <code>tuple</code>), the box cannot change in place — so <code>x += 1</code> or <code>name += "!"</code> always creates a fresh box and moves only that one sticky note.</p>
+
+<div class="keyidea">Passing a list or dict into a function shares the caller's object. On lists, <code>a += [3]</code> edits in place (changing aliases), while <code>a = a + [3]</code> creates a brand-new list.</div>
+
+<div class="check" id="check-iadd">
+  <p class="q">What do <code>x</code> and <code>y</code> hold after running this snippet?</p>
+<pre><code>x = [10, 20]
+y = x
+x += [30]
+y = y + [40]</code></pre>
+  <div class="opts">
+    <button data-correct><code>x</code> is <code>[10, 20, 30]</code> and <code>y</code> is <code>[10, 20, 30, 40]</code></button>
+    <button>Both <code>x</code> and <code>y</code> are <code>[10, 20, 30, 40]</code></button>
+    <button><code>x</code> is <code>[10, 20, 30]</code> and <code>y</code> is <code>[10, 20, 40]</code></button>
+  </div>
+  <div class="fb right"><p>Exact! <code>x += [30]</code> edits the shared list in place, so both <code>x</code> and <code>y</code> see <code>[10, 20, 30]</code>. Then <code>y = y + [40]</code> builds a brand-new list <code>[10, 20, 30, 40]</code> and moves only <code>y</code> to it, leaving <code>x</code> at <code>[10, 20, 30]</code>.</p></div>
+  <div class="fb wrong"><p>Compare with <code>p = ["a"]; q = p</code>: running <code>p += ["b"]</code> edits the shared box in place so both see <code>["a", "b"]</code>; then running <code>q = q + ["c"]</code> builds a fresh box <code>["a", "b", "c"]</code> and points only <code>q</code> at it, leaving <code>p</code> at <code>["a", "b"]</code>.</p></div>
+</div>
+
+<p>Now let's see the most famous place this sticky-note rule catches people by surprise: building a 2D board or copying nested lists.</p>
+
+<!-- ============================================================ -->
+<h2 id="s3"><span class="sec-num">3</span>The shared-row trap and shallow vs. deep copies</h2>
+
+<p>In Python, <code>["."] * 3</code> makes a neat 3-slot list <code>[".", ".", "."]</code> — completely safe, because strings like <code>"."</code> are locked and cannot be edited in place. So it feels natural to make a 3×3 tic-tac-toe board by multiplying again: <code>[["."] * 3] * 3</code>. Watch what goes wrong the instant you place an <code>"X"</code> in the top row:</p>
+
+<pre><code># BUG: all 3 rows are sticky notes on the EXACT SAME inner list!
+board = [["."] * 3] * 3
+board[0][1] = "X"
+print(board)
+# [['.', 'X', '.'], ['.', 'X', '.'], ['.', 'X', '.']]  — ALL 3 ROWS CHANGED!
+
+# FIX: build 3 brand-new inner lists (one per loop turn!)
+# Tip: "_" is Python's convention for a loop variable whose number we don't need
+board = []
+for _ in range(3):
+    board.append(["."] * 3)
+board[0][1] = "X"
+print(board)
+# [['.', 'X', '.'], ['.', '.', '.'], ['.', '.', '.']]  — ONLY ROW 0 CHANGED!</code></pre>
+
+<p class="small muted"><em>Shorthand preview:</em> you will often see that safe 3-line loop written on one line as <code>board = [["."] * 3 for _ in range(3)]</code> — we unpack that 1-line <b>list comprehension</b> style in Part 2!</p>
+
+<p>Step through the difference below:</p>
+
+<div class="figure">
+  <div id="viz-grid-trap"></div>
+  <div class="cap">Toggle between buggy <code>[["."] * 3] * 3</code> (3 sticky notes sharing 1 row box) and 3 fresh rows (each row is its own box in memory).</div>
+</div>
+
+<p>The exact same "outer box vs. inner boxes" surprise shows up when you copy a list. Python's <code>import</code> statement loads extra tools from built-in modules (like <code>import copy</code> below):</p>
+<ul>
+  <li><b>Shallow copy (<code>a.copy()</code> or <code>a[:]</code>):</b> copies the <b>outer list only</b>. Perfect for a flat list of numbers or strings like <code>[10, 20, 30]</code>! But if your list holds nested lists inside (like a 2D board), the inner lists are <em>still shared</em> between the original and the copy!</li>
+  <li><b>Deep copy (<code>copy.deepcopy(board)</code>):</b> loads Python's built-in <code>copy</code> module and clones the outer box <b>and every nested box inside it</b>, so editing anything in the clone can never touch the original.</li>
+</ul>
+
+<pre><code>import copy
+
+# Flat list: shallow copy is completely independent
+prices = [4, 5, 6]
+prices_copy = prices.copy()
+prices_copy[0] = 99          # prices is still [4, 5, 6]
+
+# Nested 2D board: shallow copy STILL shares inner rows!
+board = [["A", "B"], ["C", "D"]]
+shallow = board.copy()
+shallow[0][0] = "Z"          # board[0][0] ALSO became "Z"!
+
+# Deep copy clones every nested layer
+board = [["A", "B"], ["C", "D"]]
+full = copy.deepcopy(board)
+full[0][0] = "Z"             # board[0][0] is still "A"!</code></pre>
+
+<div class="keyidea">Never build a 2D list with <code>[[0] * cols] * rows</code> — create a fresh inner list per row. Use <code>.copy()</code> or <code>[:]</code> for flat lists, and <code>copy.deepcopy(...)</code> whenever lists or dicts are nested inside each other.</div>
+
+<div class="check" id="check-grid-trap">
+  <p class="q">You create <code>grid = [[0] * 2] * 3</code> and run <code>grid[2][0] = 9</code>. What does <code>grid[0][0]</code> equal afterward?</p>
+  <div class="opts">
+    <button><code>0</code> — only row 2 was edited</button>
+    <button data-correct><code>9</code> — all 3 rows point to the exact same inner list</button>
+    <button>Raises <code>IndexError</code> — multiplying nested lists is not allowed</button>
+  </div>
+  <div class="fb right"><p>Spot on! <code>* 3</code> repeats the reference to that single <code>[0, 0]</code> list three times, so editing row 2 edits rows 0 and 1 at the same time.</p></div>
+  <div class="fb wrong"><p>Picture putting 3 copies of the <em>same</em> house key on a keychain: unlocking the door with key #3 opens the exact same house as key #1! Multiplying <code>[[0] * 2] * 3</code> copies the key to one inner list 3 times, so changing <code>grid[2][0]</code> to <code>9</code> makes <code>grid[0][0]</code> equal <code>9</code> too.</p></div>
+</div>
+
+<div class="check" id="check-shallow-copy">
+  <p class="q">You run <code>teams = [["Maya", "Sam"], ["Kai"]]</code>, then <code>backup = teams.copy()</code>, and then <code>backup[0].append("Leo")</code>. What does <code>teams[0]</code> hold?</p>
+  <div class="opts">
+    <button><code>["Maya", "Sam"]</code> — <code>.copy()</code> cloned the inner lists too</button>
+    <button data-correct><code>["Maya", "Sam", "Leo"]</code> — <code>.copy()</code> is shallow, so both outer lists still share the same inner lists</button>
+    <button><code>["Maya", "Sam", "Kai", "Leo"]</code> — copying flattens nested lists</button>
+  </div>
+  <div class="fb right"><p>Sharp catch! <code>teams.copy()</code> creates a new outer list, yet slot 0 of <code>backup</code> still points to the same <code>["Maya", "Sam"]</code> list as slot 0 of <code>teams</code>. Use <code>copy.deepcopy(teams)</code> to clone inner lists too.</p></div>
+  <div class="fb wrong"><p>Think of copying a folder full of shortcuts: you now have two folders, yet both folders contain shortcuts to the <em>same</em> inner files! <code>.copy()</code> only duplicates the outer list — appending <code>"Leo"</code> inside <code>backup[0]</code> edits the shared inner list, so <code>teams[0]</code> becomes <code>["Maya", "Sam", "Leo"]</code>.</p></div>
+</div>
+
+<p>That sticky-note picture also explains one of the most notorious traps in all of Python: putting <code>=[]</code> as a function's default argument.</p>
+
+<!-- ============================================================ -->
+<h2 id="s4"><span class="sec-num">4</span>Default function arguments run once (the bucket=[] trap)</h2>
+
+<p>Suppose you write a tiny helper to add a note to a list, defaulting to an empty list when the caller doesn't pass one:</p>
+
+<pre><code># BUG: the default list [] is created ONCE when Python reads def!
+def add_note(msg, notes=[]):
+    notes.append(msg)
+    return notes
+
+print(add_note("call Mom"))    # ["call Mom"]
+print(add_note("buy milk"))    # ["call Mom", "buy milk"]  — WHAT?!</code></pre>
+
+<p>Why did <code>"call Mom"</code> show up inside the second call? Because Python creates default argument values <b>once when the <code>def</code> line runs</b> — not fresh on each function call! Every call that omits <code>notes</code> shares that exact same hidden list box forever.</p>
+
+<p>The standard Python fix is always the same three lines: default to <b><code>None</code></b> (locked!) and create a brand-new list inside the function body:</p>
+
+<pre><code># SAFE: fresh list created inside the body whenever notes is None
+def add_note(msg, notes=None):
+    if notes is None:
+        notes = []
+    notes.append(msg)
+    return notes
+
+print(add_note("call Mom"))    # ["call Mom"]
+print(add_note("buy milk"))    # ["buy milk"]  — clean!</code></pre>
+
+<p><b>Watch one subtle detail:</b> always write <code>if notes is None:</code> — <b>not</b> <code>notes = notes or []</code>! Why? In Python, an empty list <code>[]</code> counts as falsy (just like <code>0</code>, <code>""</code>, <code>False</code>, and <code>None</code>), and <code>a or b</code> falls back to <code>b</code> whenever <code>a</code> is falsy. So if a caller intentionally hands you their own empty list <code>my_list = []</code> and calls <code>add_note("hi", my_list)</code>, <code>notes or []</code> throws away <code>my_list</code> and creates a separate list, leaving <code>my_list</code> empty!</p>
+
+<div class="keyidea">Never put a mutable default like <code>notes=[]</code> or <code>cache={}</code> in a <code>def</code> line. Always default to <code>None</code> and guard with <code>if notes is None: notes = []</code>.</div>
+
+<div class="check" id="check-default-arg">
+  <p class="q">Someone tries to fix the default-argument bug by writing <code>notes = notes or []</code> inside <code>add_note(msg, notes=None)</code>. Then a caller runs <code>my_log = []</code> followed by <code>add_note("hi", my_log)</code>. What does <code>my_log</code> hold afterward?</p>
+  <div class="opts">
+    <button><code>["hi"]</code> — <code>notes or []</code> keeps <code>my_log</code> because it was passed in explicitly</button>
+    <button data-correct><code>[]</code> — empty <code>my_log</code> is falsy, so <code>notes or []</code> replaced it with a brand-new list</button>
+    <button>Raises <code>TypeError</code> — you cannot use <code>or</code> with lists</button>
+  </div>
+  <div class="fb right"><p>Sharp catch! Because an empty list <code>[]</code> counts as falsy in Python, <code>my_log or []</code> ignores <code>my_log</code> and creates a brand-new list, appending <code>"hi"</code> there instead. Writing <code>if notes is None:</code> keeps the caller's empty list intact!</p></div>
+  <div class="fb wrong"><p>Check what <code>[] or ["fallback"]</code> evaluates to in Python: since <code>[]</code> is falsy, <code>or</code> moves on to the right-hand side and returns <code>["fallback"]</code>! So <code>notes = notes or []</code> throws away the caller's empty <code>my_log</code>, appends <code>"hi"</code> to a fresh list, and leaves <code>my_log</code> empty (<code>[]</code>).</p></div>
+</div>
+
+<p>Let's wrap up Day 2 Part 1 with two more everyday traps that come straight from how Python reads names and lists inside loops.</p>
+
+<!-- ============================================================ -->
+<h2 id="s5"><span class="sec-num">5</span>Functions created in loops and editing while iterating</h2>
+
+<h3>1. Capturing a loop variable inside a function</h3>
+
+<p>In Python, functions are values just like numbers or strings — you can store them inside a list! For a tiny 1-line function, Python also has <b><code>lambda</code></b>: writing <code>lambda x: x * 2</code> creates an unnamed mini-function that takes <code>x</code> and returns <code>x * 2</code>.</p>
+
+<p>Now suppose you build a list of multiplier functions in a loop — one that doubles, one that triples, and one that multiplies by 10:</p>
+
+<pre><code># BUG: every function looks up factor LATER when called (after the loop ended at 10!)
+funcs = []
+for factor in [2, 3, 10]:
+    funcs.append(lambda x: x * factor)
+
+print(funcs[0](5))    # 50 (expected 10!) — factor ended the loop at 10!
+print(funcs[1](5))    # 50 (expected 15!)
+print(funcs[2](5))    # 50 (expected 50)</code></pre>
+
+<p>Why did all three print <code>50</code>? Because an inner function does not snapshot <code>factor</code> when created — it keeps a sticky note pointing to the loop variable <code>factor</code> and reads whatever <code>factor</code> holds <em>when you call the function later</em> (which is <code>10</code>, the last turn of the loop!). Python calls an inner function that remembers variables from an outer scope a <b>closure</b>.</p>
+
+<p>Two clean fixes snapshot each turn's value immediately:</p>
+
+<pre><code># FIX A: snapshot the value into a default parameter (defaults run at creation time!)
+funcs = []
+for factor in [2, 3, 10]:
+    funcs.append(lambda x, f=factor: x * f)
+
+# FIX B: build each closure inside a tiny helper (each call gets its own f box)
+def make_mult(f):
+    def mult(x):
+        return x * f
+    return mult
+
+funcs = []
+for factor in [2, 3, 10]:
+    funcs.append(make_mult(factor))</code></pre>
+
+<h3>2. Never delete items from a container while looping over it</h3>
+
+<p>Suppose you want to remove every expired item from a dictionary, or drop negative numbers from a list:</p>
+<ul>
+  <li>Deleting keys from a <code>dict</code> (with <code>del menu[item]</code>) or items from a <code>set</code> while looping directly over it crashes immediately with <b><code>RuntimeError: dictionary changed size during iteration</code></b>.</li>
+  <li>Removing items from a <code>list</code> while looping over it scoots the remaining items left, silently skipping neighbors!</li>
+</ul>
+
+<p>Calling <code>list(menu)</code> makes a snapshot list of the dictionary's keys up front. Always loop over a snapshot (<code>list(menu)</code>) or build a fresh filtered list instead:</p>
+
+<pre><code># SAFE dict cleanup: loop over a snapshot list of the keys
+menu = {"latte": 5, "old_pie": 0, "tea": 3}
+for item in list(menu):
+    if menu[item] == 0:
+        del menu[item]              # del removes that key safely from menu
+
+# SAFE list cleanup: build a fresh list of items to keep
+temps = [20, -4, -1, 18]
+warm = []
+for t in temps:
+    if t &gt;= 0:
+        warm.append(t)              # [20, 18] — never skips a neighbor!</code></pre>
+
+<div class="keyidea">Functions built inside a loop read the loop variable's <em>final</em> value unless you snapshot it (<code>lambda x, f=factor:</code> or a helper <code>def</code>). And never delete from a list, dict, or set while looping over it — iterate a snapshot or build a new list.</div>
+
+<div class="check" id="check-closure-trap">
+  <p class="q">You run this loop and call <code>adders[0](10)</code>. What does it return?</p>
+<pre><code>adders = []
+for n in [1, 2, 5]:
+    adders.append(lambda x: x + n)</code></pre>
+  <div class="opts">
+    <button><code>11</code> — each lambda froze its own copy of <code>n</code> on each turn</button>
+    <button data-correct><code>15</code> — all three lambdas look up <code>n</code> when called, after the loop finished at <code>5</code></button>
+    <button>Raises <code>NameError</code> — <code>n</code> disappears once the loop ends</button>
+  </div>
+  <div class="fb right"><p>Spot on! None of the lambdas run until you call <code>adders[0](10)</code> — by then the loop has finished and <code>n</code> holds <code>5</code>, so all three add <code>5</code>. Writing <code>lambda x, n=n: x + n</code> captures each turn's <code>n</code> into a default parameter at creation time.</p></div>
+  <div class="fb wrong"><p>Think of <code>n</code> as a whiteboard that gets erased and rewritten on every turn: first <code>1</code>, then <code>2</code>, then <code>5</code>. Each lambda just says "look at the whiteboard and add that number to <code>x</code>." When you call <code>adders[0](10)</code> after the loop finishes, the whiteboard says <code>5</code>, so it returns <code>10 + 5 = 15</code>!</p></div>
+</div>
+
+<p>Now that Python's sticky-note memory model is crystal clear, Part 2 (<a href="python-idioms.html">Transforming and streaming data</a>) shows you how to write clean 1-line comprehensions, custom sorting, and memory-friendly lazy streams.</p>
+
+<!-- ============================================================ -->
+<h2 id="summary"><span class="sec-num">✓</span>What to remember</h2>
+<p class="small muted">Full syntax lookup: <a href="../../../python-cheatsheet.html#s6">Functions &amp; scope (§6)</a> · <a href="../../../python-cheatsheet.html#s7">Memory &amp; copies (§7)</a></p>
+<div class="table-wrap"><table>
+  <thead><tr><th>Situation</th><th>Common trap</th><th>Safe Python habit</th></tr></thead>
+  <tbody>
+    <tr><td>Compare values vs. same object</td><td>Using <code>is</code> on numbers or strings</td><td><code>==</code> for values; <code>is None</code> for <code>None</code></td></tr>
+    <tr><td>Make a 2D board</td><td><code>[[0] * cols] * rows</code> (shared rows!)</td><td>Build a fresh row per iteration</td></tr>
+    <tr><td>Copy a nested list/dict</td><td><code>grid.copy()</code> (inner rows still shared!)</td><td><code>copy.deepcopy(grid)</code></td></tr>
+    <tr><td>Optional list parameter</td><td><code>def f(x, out=[]):</code> or <code>out = out or []</code></td><td><code>out=None</code> + <code>if out is None: out = []</code></td></tr>
+    <tr><td>Build functions in a loop</td><td><code>lambda x: x * factor</code> (reads final value)</td><td><code>lambda x, f=factor: x * f</code> or helper <code>def</code></td></tr>
+    <tr><td>Delete while looping</td><td><code>del d[k]</code> inside <code>for k in d:</code></td><td>Loop over <code>list(d)</code> or build a new list</td></tr>
+  </tbody>
+</table></div>
+
+<div class="review" id="review"></div>
+
+<!-- ============================================================ -->
+<h2 id="exercises"><span class="sec-num">✎</span>Exercises</h2>
+<p>Try Warm-ups 1 and 2 on paper first, then knock out the three memory-model drills across <a href="../../../../exercises/00-python-for-ml/py_internals.py">py_internals.py</a> and <a href="../../../../exercises/00-python-for-ml/py_idioms.py">py_idioms.py</a> (you'll finish the remaining functions in both files right after Part 2 and Day 3).</p>
+
+<div class="exercise">
+  <div class="tier warm">Warm-up · pen and paper</div>
+  <h4>1. Predict what prints (no Python!)</h4>
+  <p>Trace each one carefully: (a) start with <code>a = [1, 2]</code> and <code>b = a</code>, then run <code>b += [3]</code> — what is <code>a</code>? (b) start with <code>a = [1, 2]</code> and <code>b = a</code>, then run <code>b = b + [3]</code> — what is <code>a</code>? (c) given this buggy function, what does calling <code>add(1)</code> and then <code>add(2)</code> return on the second call?</p>
+<pre><code>def add(x, box=[]):
+    box.append(x)
+    return box</code></pre>
+  <details class="aside another"><summary>Answer</summary>
+    <p>(a) <code>[1, 2, 3]</code> (<code>+=</code> edited the shared list in place). (b) <code>[1, 2]</code> (<code>b + [3]</code> built a new list and moved only <code>b</code>). (c) <code>[1, 2]</code> (both calls shared the same default list created at <code>def</code> time).</p>
+  </details>
+</div>
+
+<div class="exercise">
+  <div class="tier warm">Warm-up · pen and paper</div>
+  <h4>2. Fix three memory bugs</h4>
+  <p>Spot what is wrong and write the fix: (a) <code>grid = [[0] * 4] * 3</code>; (b) looping <code>for k in scores:</code> and running <code>del scores[k]</code> when <code>scores[k] &lt; 0</code>; (c) building multipliers in a loop with <code>for k in [2, 3, 4]: funcs.append(lambda x: x * k)</code>.</p>
+  <details class="aside another"><summary>Answer</summary>
+    <p>(a) Build a fresh row inside a loop: <code>grid = []</code> then <code>for _ in range(3): grid.append([0] * 4)</code> (or the 1-line comprehension <code>[[0] * 4 for _ in range(3)]</code> coming up in Part 2). (b) Loop over a snapshot of keys: <code>for k in list(scores):</code>. (c) Capture each turn's <code>k</code> in a default parameter: <code>lambda x, factor=k: x * factor</code> (or a helper <code>def</code>).</p>
+  </details>
+</div>
+
+<div class="exercise">
+  <div class="tier core">Day 2 · Hands-on coding (3 drills)</div>
+  <h4>3. Implement make_grid, append_log, and make_multipliers</h4>
+  <p>Implement <code>make_grid</code> and <code>append_log</code> in <a href="../../../../exercises/00-python-for-ml/py_internals.py">py_internals.py</a>, plus <code>make_multipliers</code> in <a href="../../../../exercises/00-python-for-ml/py_idioms.py">py_idioms.py</a>, then run just those tests:</p>
+<pre class="plain"><code>python3 -m pytest -k "make_grid or append_log or make_multipliers"</code></pre>
+</div>
+
+<div class="exercise">
+  <div class="tier stretch">Fluency practice · optional</div>
+  <h4>4. Write a safe board-editor helper</h4>
+  <p>In a scratch file or a local Python REPL, write <code>place_mark(board, r, c, mark)</code> that takes a 2D list of strings, makes a deep copy into <code>new_board</code> so the caller's original board is never changed, sets <code>new_board[r][c] = mark</code>, and returns <code>new_board</code>. Verify that changing the returned board leaves the original untouched!</p>
+</div>
+
+<nav class="chapter-nav">
+  <a href="python-data-structures.html"><small>← Previous</small>Python's built-in data structures</a>
+  <a class="next" href="python-idioms.html"><small>Next →</small>Transforming and streaming data</a>
+</nav>
+
+</main>
+
+<script>
+(function () {
+  /* ---- Player 1: Aliasing (append in place) vs Rebinding (section 1) ---- */
+  (function () {
+    const modes = {
+      mutate: {
+        frames: [
+          { cart: ["milk", "eggs"], backup: null, msg: 'Step 1: <code>cart = ["milk", "eggs"]</code> creates one list box with sticky note <code>cart</code>.' },
+          { cart: ["milk", "eggs"], backup: null, both: true, msg: 'Step 2: <code>backup = cart</code> sticks a second sticky note on the <b>same</b> box — zero copy!' },
+          { cart: ["milk", "eggs", "bread"], backup: null, both: true, warn: true, msg: 'Step 3: <code>backup.append("bread")</code> edits that shared box — <b>cart now sees "bread" too!</b>' }
+        ]
+      },
+      rebind: {
+        frames: [
+          { cart: ["milk", "eggs"], backup: null, msg: 'Step 1: <code>cart = ["milk", "eggs"]</code> creates one list box.' },
+          { cart: ["milk", "eggs"], backup: null, both: true, msg: 'Step 2: <code>backup = cart</code> puts both sticky notes on the same box.' },
+          { cart: ["milk", "eggs"], backup: ["tea"], ok: true, msg: 'Step 3: <code>backup = ["tea"]</code> peels <code>backup</code> off onto a brand-new box — <b>cart is completely untouched!</b>' }
+        ]
+      }
+    };
+    const sel = V.el("select", { "aria-label": "Choose aliasing or rebinding" },
+      V.el("option", { value: "mutate" }, 'Edit shared box: backup.append("bread")'),
+      V.el("option", { value: "rebind" }, 'Move sticky note: backup = ["tea"]'));
+    const api = V.player(document.getElementById("viz-sticky-notes"), {
+      frames: modes.mutate.frames,
+      speed: 1050,
+      extraControls: [sel],
+      draw(f, stage) {
+        const labelA = f.both ? "cart & backup → SAME list box" : "cart → list box #1";
+        const row1 = V.el("div", { style: "margin-bottom:12px" },
+          V.el("div", { class: "small muted", style: "margin-bottom:4px" }, labelA),
+          V.el("div", { style: "white-space:nowrap" }, V.cells(f.cart, {
+            idx: false,
+            cls: (i) => f.warn && i === 2 ? "bad" : (f.ok ? "done" : "hl")
+          })));
+        const row2 = V.el("div", {},
+          V.el("div", { class: "small muted", style: "margin-bottom:4px" }, f.backup ? "backup → NEW list box #2" : "Separate box #2"),
+          V.el("div", { style: "white-space:nowrap" }, V.cells(f.backup || ["(none)"], {
+            idx: false,
+            cls: () => f.backup ? "done" : "dim"
+          })));
+        stage.append(row1, row2);
+      }
+    });
+    sel.onchange = () => api.load(modes[sel.value].frames);
+  })();
+
+  /* ---- Player 2: Shared 2D rows vs Independent 2D rows (section 3) ---- */
+  (function () {
+    const modes = {
+      bug: {
+        frames: [
+          { rows: [[".", ".", "."], [".", ".", "."], [".", ".", "."]], linked: true, edited: false, msg: '<code>board = [["."] * 3] * 3</code>: all 3 rows point to the <b>exact same</b> inner list!' },
+          { rows: [[".", "X", "."], [".", "X", "."], [".", "X", "."]], linked: true, edited: true, msg: '<code>board[0][1] = "X"</code> writes into the shared inner list — <b>all 3 rows turn into "X"!</b>' }
+        ]
+      },
+      safe: {
+        frames: [
+          { rows: [[".", ".", "."], [".", ".", "."], [".", ".", "."]], linked: false, edited: false, msg: 'Loop appends 3 separate <code>["."] * 3</code> lists — each row has its own box in memory.' },
+          { rows: [[".", "X", "."], [".", ".", "."], [".", ".", "."]], linked: false, edited: true, msg: '<code>board[0][1] = "X"</code> changes <b>row 0 only</b> — rows 1 and 2 stay clean!' }
+        ]
+      }
+    };
+    const sel = V.el("select", { "aria-label": "Choose 2D board setup" },
+      V.el("option", { value: "bug" }, 'Bug: [["."] * 3] * 3 (shared rows)'),
+      V.el("option", { value: "safe" }, 'Safe: 3 independent row lists'));
+    const api = V.player(document.getElementById("viz-grid-trap"), {
+      frames: modes.bug.frames,
+      speed: 1100,
+      extraControls: [sel],
+      draw(f, stage) {
+        f.rows.forEach((r, ri) => {
+          const tag = f.linked ? `row ${ri} → Box #1 (SHARED!)` : `row ${ri} → Box #${ri + 1}`;
+          stage.append(V.el("div", { style: "display:flex;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap" },
+            V.el("span", { class: "small muted", style: "min-width:210px;font-family:var(--mono)" }, tag),
+            V.cells(r, {
+              idx: false,
+              cls: (ci) => !f.edited ? "" : (ci === 1 && (ri === 0 || f.linked) ? (f.linked && ri > 0 ? "bad" : (f.linked ? "warn" : "done")) : "")
+            })));
+        });
+      }
+    });
+    sel.onchange = () => api.load(modes[sel.value].frames);
+  })();
+})();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 Zero-dependency offline quality linter for gpu/lab HTML book chapters.
 
 Usage:
-  python3 tools/check_chapter.py sections/01-matrices-and-gpus/concepts/what-is-a-gpu.html
+  python3 tools/check_chapter.py book/sections/01-matrices-and-gpus/concepts/what-is-a-gpu.html
   python3 tools/check_chapter.py --all
   python3 tools/check_chapter.py --all --strict
 
@@ -360,14 +360,14 @@ def lint_file(path: Path, valid_topics: set[str]) -> tuple[list[str], list[str],
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("pages", nargs="*", type=Path, help="HTML chapter file(s) to check")
-    ap.add_argument("--all", action="store_true", help="check all completed chapters in sections/*/concepts/")
+    ap.add_argument("--all", action="store_true", help="check all completed chapters in book/sections/*/concepts/")
     ap.add_argument("--include-outlines", action="store_true", help="with --all, also lint outline pages")
     ap.add_argument("--strict", action="store_true", help="treat warnings as errors")
     args = ap.parse_args(argv)
 
     targets = list(args.pages)
     if args.all:
-        for f in sorted(ROOT.glob("sections/*/concepts/*.html")):
+        for f in sorted(ROOT.glob("book/sections/*/concepts/*.html")):
             if not args.include_outlines and 'name="status" content="outline"' in f.read_text(encoding="utf-8"):
                 continue
             targets.append(f)

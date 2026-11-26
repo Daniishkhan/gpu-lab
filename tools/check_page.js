@@ -2,7 +2,7 @@
 /*
  * Load chapter pages in a headless browser and report what a reader would hit.
  *
- *   node tools/check_page.js sections/01-matrices-and-gpus/concepts/what-is-a-gpu.html [more.html] [--shots DIR]
+ *   node tools/check_page.js book/sections/01-matrices-and-gpus/concepts/what-is-a-gpu.html [more.html] [--shots DIR]
  *
  * For each page, at desktop (1280x900) and phone (390x844) width:
  *   - console errors and uncaught exceptions
