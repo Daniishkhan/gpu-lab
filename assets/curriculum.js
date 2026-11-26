@@ -543,19 +543,19 @@ window.CURRICULUM = {
      "file": "classes-dunders-and-batches.html",
      "topic": "00.03",
      "title": "Classes, magic methods & batched generators for ML",
-     "status": "outline"
+     "status": "complete"
     },
     {
      "file": "math-in-plain-python.html",
      "topic": "00.02",
      "title": "Doing math in plain Python: formulas, stats & 2D grids",
-     "status": "outline"
+     "status": "complete"
     },
     {
      "file": "python-refresher-and-idioms.html",
      "topic": "00.01",
      "title": "Python refresher & everyday idioms",
-     "status": "outline"
+     "status": "complete"
     }
    ],
    "exercises": [
@@ -1463,5 +1463,5 @@ window.CURRICULUM = {
    "exercises": []
   }
  ],
- "generated": "2026-11-25 19:48"
+ "generated": "2026-11-26 09:42"
 };
