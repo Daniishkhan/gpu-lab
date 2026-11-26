@@ -1,6 +1,6 @@
 """Doing everyday math in plain Python: formulas, stats & 2D grids.
 
-Topic: 00.02
+Topic: 00.07
 
 Math equations stop looking intimidating once you translate them into 3–5 lines of
 plain Python and test them on 4 small numbers. Practice the exact math formulas

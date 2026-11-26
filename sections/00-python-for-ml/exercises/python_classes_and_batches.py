@@ -1,6 +1,6 @@
 """Practical Python classes, magic methods & batch generators for ML.
 
-Topic: 00.03
+Topic: 00.08
 
 When you open Stage 1's micro_autograd.py or PyTorch's nn.Module and DataLoader,
 you'll see four clean Python patterns over and over:
