@@ -47,7 +47,7 @@ This repository is built for **Gemini** (Gemini CLI and Google Antigravity) usin
 
 | Stage | Focus | Toy Build / Milestone |
 |---|---|---|
-| **Phase 0A** | **Python primer & math fluency** (slicing, dicts, `zip`, comprehensions, math formulas, 2D grids, basic classes & `yield` batches) | `python_warmup.py`, `python_math_drills.py`, `python_classes_and_batches.py` |
+| **Phase 0A** | **Python Foundations (Basics → Advanced) & Math Fluency** (control flow, data structures, memory model, comprehensions/generators/`itertools`, `@dataclass`/decorators/`with`, stdlib toolkit, plain-Python math & ML magic methods) | `py_foundations.py`, `py_idioms.py`, `py_internals.py`, `py_toolkit.py`, `python_math_drills.py`, `python_classes_and_batches.py` |
 | **Phase 0B** | **Vectors, matrices, everyday NumPy & GPUs** (norms, dot products, `@` shapes, slicing/`axis`/broadcasting/masks → **What is a GPU?**) | `vector_math.py`, `matmul_shapes.py`, `numpy_habits.py`, `gpu_roofline.py` |
 | **Stage 1** | What does "learning" mean? Loss, gradient descent, **40-line autograd**, toy MLP → **PyTorch & HF** | `micro_autograd.py` + tiny next-char LM |
 | **Stage 2** | **Inventing the Transformer** (BPE, Q/K/V attention, RoPE, 120-line toy GPT) → **Gemma 4's 4 architectures** | 120-line toy GPT + `labs/01-gemma4-first-inference.md` |
@@ -62,7 +62,7 @@ Plus a **Parallel Capstone Journal** (~1h/week) and 3 pickable **Specialist Pack
 ## Scaffolding New Material
 
 ```bash
-python3 tools/new.py concept  00.01 python-refresher  "Python refresher & everyday idioms"
+python3 tools/new.py concept  01.01 vectors-and-dot-products "Vectors, distance & dot products"
 python3 tools/new.py exercise 03.02 attention_scratch "Causal self-attention from scratch"
 python3 tools/new.py eval     "Capstone 1 structured extraction"
 python3 tools/new.py exp      "Gemma 4 E4B LoRA run 01"

@@ -7,58 +7,143 @@ window.CURRICULUM = {
     "id": "p0a",
     "label": "Phase 0A",
     "code": "0A",
-    "title": "Python Primer & Math Fluency (Warm-Up)",
-    "goal": "Ease back into writing Python by hand — zero ML jargon, zero low-level memory plumbing. Build muscle memory with everyday Python idioms (lists, dicts, slicing, zip, comprehensions), turning math formulas into clean functions, 2D grids, basic classes, and batch generators.",
+    "title": "Python Foundations (Basics → Advanced) & Math Fluency",
+    "goal": "Build automatic Python fluency from square one (variables, control flow, loops, functions, built-in list/tuple/str/dict/set) all the way through memory semantics, comprehensions, lazy generators, itertools, dataclasses, decorators, context managers, and the standard library — then bridge straight into plain-Python math, 2D grids, magic methods, and ML mini-batch iterators.",
     "steps": [
      {
       "topic": "00.01",
       "gpu": "CPU (local pytest)",
-      "do": "Warm up your Python hands: functions & defaults, lists/dicts/sets, slicing & copying (spotting the b = a aliasing bug), unpacking, zip, enumerate, sum/min/max, and list/dict comprehensions. Solve python_warmup.py."
+      "do": "Master Python control flow, loops, and functions from one picture (the railway switchyard): indentation blocks, if/elif/else, chained bounds, half-open range (forward & reverse), while, continue/break/for...else, tuple returns, and explicit ValueError guards."
      },
      {
       "topic": "00.02",
       "gpu": "CPU (local pytest)",
-      "do": "Turn everyday math notation into 3–5 line Python functions: summation, mean, weighted average, variance, min-max rescaling, math.sqrt/exp/log, small lambdas, and working comfortably with 2D lists-of-lists (rows vs. columns). Solve python_math_drills.py."
+      "do": "Master Python's four built-in data structures and strings (list, tuple, str, dict, set): indexing/slicing costs, O(n) ''.join(), safe dict.get/items, O(1) set membership & set algebra (& | - ^), and classic container traps. Then solve py_foundations.py."
      },
      {
       "topic": "00.03",
       "gpu": "CPU (local pytest)",
-      "do": "Learn just enough next-level Python so ML code reads cleanly: small classes (__init__, self, __repr__, __len__, __getitem__), a gentle intro to __add__/__mul__/__call__, and yielding batches with yield. Solve python_classes_and_batches.py."
+      "do": "Master Python's object & reference model from one physical picture (sticky notes on boxes): mutable vs immutable, 2D grid aliasing, shallow vs deep copy, hidden slicing cost, mutable default args, and late-binding loop closures."
+     },
+     {
+      "topic": "00.04",
+      "gpu": "CPU (local pytest)",
+      "do": "Master transforming and streaming data cleanly: comprehensions, multi-key lambda sorting, enumerate/zip/zip(*matrix), generator expressions, itertools (accumulate/islice/chain/groupby), and lazy yield / yield from. Then solve py_idioms.py."
+     },
+     {
+      "topic": "00.05",
+      "gpu": "CPU (local pytest)",
+      "do": "Master Python's @ decorators and clean building blocks: classes, @dataclass(frozen=True, order=True), custom @memoize with @wraps and falsy-value safety, and exception-safe with / @contextmanager (the exact mechanism behind torch.no_grad()). Then solve py_internals.py."
+     },
+     {
+      "topic": "00.06",
+      "gpu": "CPU (local pytest)",
+      "do": "Master Python's everyday standard library toolkit (Counter, defaultdict, deque, heapq, bisect, pathlib, json) and solve py_toolkit.py."
+     },
+     {
+      "topic": "00.07",
+      "gpu": "CPU (local pytest)",
+      "do": "Turn everyday math notation into 3–5 line Python functions: summation (Σ), mean, weighted average, variance, min-max rescaling, math.sqrt/exp/log, linear scoring y = w*x + b, and 2D lists-of-lists (rows vs. columns). Solve python_math_drills.py."
+     },
+     {
+      "topic": "00.08",
+      "gpu": "CPU (local pytest)",
+      "do": "Bridge directly into ML codebases: immutable operator dunders (__add__, __mul__, __repr__, __eq__), callable objects (__call__ like nn.Module), snapshot-safe datasets (__len__, __getitem__), and lazy batch_iter generators. Solve python_classes_and_batches.py."
      }
     ],
-    "dayNote": "Two relaxed, hands-on sessions (~2 hours each) to get Python flowing naturally from your fingers before touching NumPy or ML.",
+    "dayNote": "Five focused sessions (~2.5 to 3.5 hours each) taking you cleanly from Python basics all the way to advanced Python and plain-Python ML math before touching NumPy or GPUs.",
     "days": [
      {
-      "label": "Session 1 · Python refresher & math formulas in plain Python",
+      "label": "Day 1 · Python foundations: control flow, loops, functions & built-in structures",
       "plan": [
        {
         "t": "1h",
         "topic": "00.01",
-        "do": "Drill slicing, aliasing, dicts, zip, enumerate, and comprehensions in python_warmup.py"
+        "do": "Read Python control flow, loops, and functions: if/elif/else, chained bounds, half-open range, while, break/continue/for...else, returns, and ValueError guards"
        },
        {
-        "t": "1h",
+        "t": "1h 15m",
         "topic": "00.02",
-        "do": "Translate averages, variance, rescaling & 2D grid sums into clean Python in python_math_drills.py"
+        "do": "Read Built-in data structures: list ends & slicing, tuple/str immutability & ''.join(), dict patterns, set membership & set algebra"
+       },
+       {
+        "t": "1h 30m",
+        "topic": "00.02",
+        "do": "Complete py_foundations.py (all 5 functions, including work-capped O(n) set/dict tests)"
        }
       ]
      },
      {
-      "label": "Session 2 · Practical classes, magic methods & batch generators",
+      "label": "Day 2 · Memory model, comprehensions, lambdas & lazy streams",
       "plan": [
        {
-        "t": "1h 30m",
+        "t": "1h 15m",
         "topic": "00.03",
-        "do": "Build a small Vec2D class, a callable LinearScaler, and a batch_iter generator in python_classes_and_batches.py"
+        "do": "Read How Python holds data in memory: sticky notes on boxes, mutability, 2D grid aliasing, shallow vs deep copy, mutable defaults, and loop closures"
+       },
+       {
+        "t": "1h 15m",
+        "topic": "00.04",
+        "do": "Read Transforming and streaming data: comprehensions, lambda sort keys, zip/enumerate, itertools, and lazy yield / yield from"
+       },
+       {
+        "t": "1h 45m",
+        "topic": "00.04",
+        "do": "Complete py_idioms.py (all 5 functions)"
+       }
+      ]
+     },
+     {
+      "label": "Day 3 · Classes, dataclasses, decorators & with context managers",
+      "plan": [
+       {
+        "t": "1h 15m",
+        "topic": "00.05",
+        "do": "Read Classes, dataclasses, decorators, and with blocks: @dataclass(frozen=True, order=True), @memoize/@wraps with falsy values, and @contextmanager try/finally"
+       },
+       {
+        "t": "2h",
+        "topic": "00.05",
+        "do": "Complete py_internals.py (all 5 drills)"
+       }
+      ]
+     },
+     {
+      "label": "Day 4 · Standard library toolkit",
+      "plan": [
+       {
+        "t": "1h",
+        "topic": "00.06",
+        "do": "Read Python's everyday standard library toolkit (Counter, defaultdict, deque, heapq, bisect, pathlib, json) and explore the Python Cheatsheet"
+       },
+       {
+        "t": "1h 45m",
+        "topic": "00.06",
+        "do": "Complete py_toolkit.py (work-capped O(n)/O(n log n) tests)"
+       }
+      ]
+     },
+     {
+      "label": "Day 5 · ML bridge: math in plain Python, magic methods & batch iterators",
+      "plan": [
+       {
+        "t": "1h 15m",
+        "topic": "00.07",
+        "do": "Read Doing math in plain Python and complete python_math_drills.py (mean, weighted average, variance, min-max rescaling, y = w*x + b, 2D column sums)"
+       },
+       {
+        "t": "1h 30m",
+        "topic": "00.08",
+        "do": "Read Classes, magic methods & batched generators for ML and complete python_classes_and_batches.py (Vec2D, LinearScaler, TinyDataset, batch_iter)"
        }
       ]
      }
     ],
     "milestone": {
      "id": "m0a",
-     "title": "Milestone 0A · Comfortable writing math in Python",
-     "bar": "All 3 Python primer exercises pass; writing zip/comprehensions, 2D grids, small classes with __add__/__call__, and yield batch loops feels natural by hand.",
-     "ask": "quiz me on Phase 0A: Python slicing & aliasing, zip & comprehensions, turning math formulas into functions, basic classes (__add__, __call__), and yield batching"
+     "title": "Milestone 0A · Full Python fluency (basics → advanced) & plain-Python ML math",
+     "bar": "All 6 Phase 0A Python exercise suites pass (py_foundations, py_idioms, py_internals, py_toolkit, python_math_drills, python_classes_and_batches); control flow, containers, memory copies, generators, decorators, context managers, stdlib tools, math loops, and ML dunder hooks feel natural by hand.",
+     "ask": "quiz me on Phase 0A: Python control flow & containers, memory aliasing & closures, comprehensions & lazy yield streams, dataclasses/decorators/context managers, stdlib toolkit, plain-Python math formulas, and ML magic methods (__add__, __call__, __getitem__)"
     }
    },
    {
@@ -506,23 +591,23 @@ window.CURRICULUM = {
   {
    "id": "00",
    "slug": "00-python-for-ml",
-   "title": "Python Primer & Math Fluency",
+   "title": "Python Foundations & Math Fluency",
    "notes": [
-    "Phase 0A: a friendly, hands-on Python warm-up before touching NumPy or ML. Rebuild hand-fluency with everyday Python idioms (slicing, dicts, zip, comprehensions), turning math formulas into clean functions, 2D grids, basic classes, and batch generators."
+    "Phase 0A: a complete Basics → Advanced Python foundation (control flow, data structures, memory model, comprehensions, generators, itertools, classes, dataclasses, decorators, context managers, and standard library) followed by plain-Python math, 2D grids, and ML magic methods before touching NumPy or GPUs."
    ],
    "topics": [
     {
      "id": "00.01",
      "tag": "P0",
-     "short": "Python refresher & everyday idioms",
-     "text": "Functions & defaults, lists/tuples/dicts/sets, slicing & copying (avoiding the b = a aliasing trap), unpacking, zip, enumerate, sum/min/max, and list/dict comprehensions.",
+     "short": "Python control flow, loops & functions",
+     "text": "Python control flow, loops, and functions: indentation blocks, if/elif/else, chained comparisons, short-circuit truthiness, half-open range (forward & reverse), while loops, break/continue/for...else, tuple returns, default arguments, and explicit ValueError guards.",
      "requires": []
     },
     {
      "id": "00.02",
      "tag": "P0",
-     "short": "Doing math in plain Python: formulas, stats & 2D grids",
-     "text": "Translating summation (Σ), mean, weighted average, min-max rescaling, variance, and math.sqrt/exp/log into 3–5 line Python functions, plus working cleanly with 2D lists-of-lists and lambdas.",
+     "short": "Built-in structures (list, tuple, dict, set)",
+     "text": "Python's built-in data structures: list indexing/slicing and back vs front costs, immutable tuple records and str ''.join(), dict safe lookups (.get/.items/.pop), set O(1) membership and set algebra (& | - ^), and classic container traps.",
      "requires": [
       "00.01"
      ]
@@ -530,41 +615,161 @@ window.CURRICULUM = {
     {
      "id": "00.03",
      "tag": "P0",
-     "short": "Classes, magic methods & batched generators for ML",
-     "text": "Writing small Python classes (__init__, self, __repr__, __len__, __getitem__), a gentle intro to __add__/__mul__/__call__ (so autograd & PyTorch nn.Module read naturally), and yielding batches with yield.",
+     "short": "Python memory model, copies & closures",
+     "text": "How Python holds data in memory: names vs objects (sticky notes on boxes), mutable vs immutable, 2D grid aliasing, shallow vs deep copy, hidden slicing cost, mutable default arguments, late-binding closures, truthiness, and mutating while iterating.",
      "requires": [
       "00.01",
       "00.02"
+     ]
+    },
+    {
+     "id": "00.04",
+     "tag": "P0",
+     "short": "Comprehensions, itertools & lazy generators",
+     "text": "Transforming and streaming data in Python: list/dict/set comprehensions, multi-key lambda sorting, enumerate/zip/zip(*matrix), lazy generator expressions, itertools (accumulate, islice, chain, groupby), and pausing generators (yield / yield from).",
+     "requires": [
+      "00.03"
+     ]
+    },
+    {
+     "id": "00.05",
+     "tag": "P0",
+     "short": "Classes, dataclasses, decorators & context managers",
+     "text": "Python's structural building blocks: classes, @dataclass(frozen=True, order=True), custom @memoize decorators with @wraps and falsy-value safety, and exception-safe with blocks via @contextmanager and try/finally.",
+     "requires": [
+      "00.03",
+      "00.04"
+     ]
+    },
+    {
+     "id": "00.06",
+     "tag": "P0",
+     "short": "Python standard library toolkit",
+     "text": "Python's everyday standard library power tools: collections.Counter, defaultdict, deque, heapq, bisect, pathlib, json, and practical gotchas that turn 20-line loops into 2 clean lines.",
+     "requires": [
+      "00.03",
+      "00.04",
+      "00.05"
+     ]
+    },
+    {
+     "id": "00.07",
+     "tag": "P0",
+     "short": "Doing math in plain Python: formulas, stats & 2D grids",
+     "text": "Translating summation (Σ), mean, weighted average, min-max rescaling, variance, and math.sqrt/exp/log into 3–5 line Python functions, plus working cleanly with 2D lists-of-lists and lambdas.",
+     "requires": [
+      "00.02",
+      "00.03",
+      "00.04"
+     ]
+    },
+    {
+     "id": "00.08",
+     "tag": "P0",
+     "short": "Classes, magic methods & batched generators for ML",
+     "text": "Writing small Python classes (__init__, self, __repr__, __len__, __getitem__), immutable __add__/__mul__/__call__ hooks (so autograd & PyTorch nn.Module read naturally), and yielding mini-batches with yield.",
+     "requires": [
+      "00.05",
+      "00.07"
      ]
     }
    ],
    "concepts": [
     {
      "file": "classes-dunders-and-batches.html",
-     "topic": "00.03",
+     "topic": "00.08",
      "title": "Classes, magic methods & batched generators for ML",
      "status": "complete"
     },
     {
      "file": "math-in-plain-python.html",
-     "topic": "00.02",
+     "topic": "00.07",
      "title": "Doing math in plain Python: formulas, stats & 2D grids",
      "status": "complete"
     },
     {
-     "file": "python-refresher-and-idioms.html",
+     "file": "python-building-blocks.html",
+     "topic": "00.05",
+     "title": "Classes, dataclasses, decorators, and with blocks",
+     "status": "complete"
+    },
+    {
+     "file": "python-control-flow.html",
      "topic": "00.01",
-     "title": "Python refresher & everyday idioms",
+     "title": "Python control flow, loops, and functions",
+     "status": "complete"
+    },
+    {
+     "file": "python-data-structures.html",
+     "topic": "00.02",
+     "title": "Python's built-in data structures (list, tuple, str, dict & set)",
+     "status": "complete"
+    },
+    {
+     "file": "python-idioms.html",
+     "topic": "00.04",
+     "title": "Transforming and streaming data (comprehensions, itertools & generators)",
+     "status": "complete"
+    },
+    {
+     "file": "python-memory-model.html",
+     "topic": "00.03",
+     "title": "How Python holds data in memory (names, copies & closures)",
+     "status": "complete"
+    },
+    {
+     "file": "python-toolkit.html",
+     "topic": "00.06",
+     "title": "Python's everyday standard library toolkit",
      "status": "complete"
     }
    ],
    "exercises": [
     {
+     "file": "py_foundations.py",
+     "module": "py_foundations",
+     "title": "Python foundations: control flow, loops, functions & built-in data structures",
+     "topics": [
+      "00.02",
+      "00.01"
+     ],
+     "result": null
+    },
+    {
+     "file": "py_idioms.py",
+     "module": "py_idioms",
+     "title": "Python idioms: comprehensions, lambdas, closures, generators and itertools",
+     "topics": [
+      "00.04",
+      "00.03"
+     ],
+     "result": null
+    },
+    {
+     "file": "py_internals.py",
+     "module": "py_internals",
+     "title": "Python in-depth: data model, classic gotchas, decorators and context managers",
+     "topics": [
+      "00.05",
+      "00.03"
+     ],
+     "result": null
+    },
+    {
+     "file": "py_toolkit.py",
+     "module": "py_toolkit",
+     "title": "Python toolkit drills: the standard library tools that turn O(n²) into O(n)",
+     "topics": [
+      "00.06"
+     ],
+     "result": null
+    },
+    {
      "file": "python_classes_and_batches.py",
      "module": "python_classes_and_batches",
      "title": "Practical Python classes, magic methods & batch generators for ML.",
      "topics": [
-      "00.03"
+      "00.08"
      ],
      "result": null
     },
@@ -573,16 +778,7 @@ window.CURRICULUM = {
      "module": "python_math_drills",
      "title": "Doing everyday math in plain Python: formulas, stats & 2D grids.",
      "topics": [
-      "00.02"
-     ],
-     "result": null
-    },
-    {
-     "file": "python_warmup.py",
-     "module": "python_warmup",
-     "title": "Python refresher & everyday idioms for ML scripts.",
-     "topics": [
-      "00.01"
+      "00.07"
      ],
      "result": null
     }
@@ -602,7 +798,7 @@ window.CURRICULUM = {
      "short": "Vectors, distance & dot products (Python → NumPy)",
      "text": "Why ML encodes words, sounds, and features as vectors: L1/L2 norms, Euclidean distance, dot products as alignment, and cosine similarity in plain Python first — then side-by-side with NumPy.",
      "requires": [
-      "00.02"
+      "00.07"
      ]
     },
     {
@@ -611,7 +807,7 @@ window.CURRICULUM = {
      "short": "Matrix multiplication & tensor shapes",
      "text": "Why every neural layer is a matrix multiply (@), transposes, hand-tracing (2, 3) @ (3, 2), and batched 3D tensors (B, T, D) without guessing shapes.",
      "requires": [
-      "00.02",
+      "00.07",
       "01.01"
      ]
     },
@@ -714,7 +910,7 @@ window.CURRICULUM = {
      "short": "Guess, measure wrongness, nudge downhill",
      "text": "Fitting y = w*x + b to 4 points: loss functions, numerical & analytic slopes (gradients), learning rate stability, and gradient descent.",
      "requires": [
-      "00.02",
+      "00.07",
       "01.01"
      ]
     },
@@ -724,7 +920,7 @@ window.CURRICULUM = {
      "short": "Backpropagation from scratch (micro-autograd)",
      "text": "The chain rule as local blame assignment through a computation graph — building a 40-line scalar Value autograd engine in pure Python.",
      "requires": [
-      "00.03",
+      "00.08",
       "02.01"
      ]
     },
@@ -803,7 +999,8 @@ window.CURRICULUM = {
      "short": "From characters to tokens & embeddings",
      "text": "Building Byte-Pair Encoding (BPE) from scratch, vocab size vs. sequence length trade-offs, and embedding lookup tables.",
      "requires": [
-      "00.01",
+      "00.02",
+      "00.06",
       "01.02",
       "02.03"
      ]
@@ -1463,5 +1660,5 @@ window.CURRICULUM = {
    "exercises": []
   }
  ],
- "generated": "2026-11-26 09:42"
+ "generated": "2026-11-26 10:05"
 };

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="topic" content="00.03">
+  <meta name="topic" content="00.08">
   <title>Classes, magic methods &amp; batched generators for ML</title>
   <script>try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("gpu-lab:theme")) || "dark"; } catch (e) {}</script>
   <link rel="stylesheet" href="../../../assets/style.css">
@@ -16,10 +16,10 @@
 <main class="content book">
 
 <header class="chapter-head">
-  <div class="eyebrow">Phase 0A · Subject 00 · Python Primer &amp; Math Fluency</div>
+  <div class="eyebrow">Phase 0A · Day 5 · Part 2</div>
   <h1>Classes, magic methods &amp; batched generators for ML</h1>
   <div class="meta">
-    <span><span class="badge P0">P0</span> Core Python fluency</span>
+    <span><span class="badge P0">P0</span> ML Python bridge</span>
     <span>about 18 minutes</span>
     <span>7 quick checks · 1 CPU exercise</span>
   </div>
@@ -37,7 +37,7 @@
   </ol>
 </div>
 
-<p class="muted small">How to read this: top to bottom, answering every quick check before moving on. Builds on <a href="python-refresher-and-idioms.html">Python refresher &amp; everyday idioms</a> and <a href="math-in-plain-python.html">Doing math in plain Python: formulas, stats &amp; 2D grids</a>.</p>
+<p class="muted small">How to read this: top to bottom, answering every quick check before moving on. Builds on <a href="python-building-blocks.html">Classes, dataclasses, decorators &amp; with blocks</a> and <a href="math-in-plain-python.html">Doing math in plain Python: formulas, stats &amp; 2D grids</a>.</p>
 
 <!-- ============================================================ -->
 <h2 id="s1"><span class="sec-num">1</span>Why do plain tuples break down once your data has rules?</h2>
@@ -242,7 +242,7 @@ print(3 * a)  # Step2D(6.0, 9.0) (calls a.__rmul__(3))</code></pre>
 <!-- ============================================================ -->
 <h2 id="s3"><span class="sec-num">3</span><span>Why do ML layers look like functions (<code>layer(x)</code>) even though they are objects?</span></h2>
 
-<p>In <code>00.02</code> you wrote the linear rule <code>w * x + b</code> as a function taking <code>w</code> and <code>b</code> every time. At the dispatch desk, shipping tiers follow that exact rule: <code>rate * weight + base</code>. Re-passing <code>(rate, base)</code> on every parcel invites swapped parameters.</p>
+<p>In <code>00.07</code> you wrote the linear rule <code>w * x + b</code> as a function taking <code>w</code> and <code>b</code> every time. At the dispatch desk, shipping tiers follow that exact rule: <code>rate * weight + base</code>. Re-passing <code>(rate, base)</code> on every parcel invites swapped parameters.</p>
 
 <p>Desk tool #2 is a <b>Pre-Set Fee Meter</b> (<code>FeeMeter</code>): dial <code>rate</code> and <code>base</code> once in <code>__init__</code>, then drop any weight straight onto the object with <code>express(4.0)</code>. Python maps <code>obj(x)</code> to <code>obj.__call__(x)</code> (without <code>__call__</code>, calling an instance raises <code>TypeError: '...' object is not callable</code>):</p>
 
@@ -260,7 +260,7 @@ print(express(0.0))  # 1.0</code></pre>
 
 <div class="figure">
   <div id="viz-callable"></div>
-  <div class="cap">Pick a preset or slide <b>rate</b> and <b>base</b> (saved once in <code>__init__</code>), then move <b>weight</b> or click a weight chip. Watch <code>meter(weight)</code> call <code>meter.__call__(weight)</code> — the same <code>w * x + b</code> rule from <code>00.02</code> — while <code>self.rate</code> and <code>self.base</code> stay pinned.</div>
+  <div class="cap">Pick a preset or slide <b>rate</b> and <b>base</b> (saved once in <code>__init__</code>), then move <b>weight</b> or click a weight chip. Watch <code>meter(weight)</code> call <code>meter.__call__(weight)</code> — the same <code>w * x + b</code> rule from <code>00.07</code> — while <code>self.rate</code> and <code>self.base</code> stay pinned.</div>
 </div>
 
 <p>This exact <code>__call__</code> hook is why PyTorch layers are built once with their learned weights and then invoked like functions: <code>out = layer(x)</code>.</p>
@@ -279,7 +279,7 @@ print(express(0.0))  # 1.0</code></pre>
 <!-- ============================================================ -->
 <h2 id="s4"><span class="sec-num">4</span>How do you build an indexable container without leaking caller edits?</h2>
 
-<p>ML datasets need two basic hooks: <code>len(box)</code> (<code>__len__</code>) and <code>box[idx]</code> (<code>__getitem__</code>). Writing them looks brief — until the sticky-note aliasing bug from <code>00.01</code> sneaks in:</p>
+<p>ML datasets need two basic hooks: <code>len(box)</code> (<code>__len__</code>) and <code>box[idx]</code> (<code>__getitem__</code>). Writing them looks brief — until the sticky-note aliasing bug from <code>00.03</code> sneaks in:</p>
 
 <pre><code>class LeakyBox:
     def __init__(self, items):
@@ -411,7 +411,7 @@ print(len(box), box[0], box[-1])  # 3 mug book</code></pre>
     <button><code>(4, "glue")</code> with <code>items</code> — <code>[-1]</code> ignores appended items</button>
   </div>
   <div class="fb right"><p><code>self._items = items</code> shares <code>raw</code>, so appending <code>"ink"</code> makes <code>len(box) == 4</code> and <code>box[-1] == "ink"</code>. <code>list(items)</code> keeps the original 3 items sealed.</p></div>
-  <div class="fb wrong"><p>From <code>00.01</code>: assigning a list never copies it. Calling <code>list(items)</code> builds a fresh list so caller appends stay outside <code>box</code>.</p></div>
+  <div class="fb wrong"><p>From <code>00.03</code>: assigning a list never copies it. Calling <code>list(items)</code> builds a fresh list so caller appends stay outside <code>box</code>.</p></div>
 </div>
 
 <!-- ============================================================ -->
@@ -495,7 +495,7 @@ print(list(gen))  # [] (exhausted after one pass!)</code></pre>
 <!-- ============================================================ -->
 <h2 id="s6"><span class="sec-num">6</span>Putting the dispatch desk together — and when to skip classes</h2>
 
-<p>Combine <code>OrderBox</code>, <code>pack_crates</code>, and <code>FeeMeter</code> with <code>00.01</code>'s <code>enumerate</code> and a list comprehension for a ten-line mini training pass (passing <code>orders</code> directly into <code>pack_crates</code> works because <code>self._items[idx]</code> forwards both single integer indexes and slices like <code>items[i : i + crate_size]</code> to the inner <code>list</code>):</p>
+<p>Combine <code>OrderBox</code>, <code>pack_crates</code>, and <code>FeeMeter</code> with <code>00.04</code>'s <code>enumerate</code> and a list comprehension for a ten-line mini training pass (passing <code>orders</code> directly into <code>pack_crates</code> works because <code>self._items[idx]</code> forwards both single integer indexes and slices like <code>items[i : i + crate_size]</code> to the inner <code>list</code>):</p>
 
 <pre><code>weights_raw = [1.0, 2.0, 3.0, 4.0, 5.0]
 orders = OrderBox(weights_raw)        # sealed snapshot
@@ -509,17 +509,17 @@ for step, crate in enumerate(pack_crates(orders, crate_size=2)):
 # step 2: [5.0] -&gt; [11.0]</code></pre>
 
 <div class="callout warn">
-  <b>Where this analogy breaks:</b> Paper binders and human loaders diverge from Python in three ways. First, <code>list(items)</code> is a <b>shallow</b> copy — it clones the outer list, not mutable lists or dicts nested inside it (inner edits still alias per <code>00.01</code>). Second, unlike a fixed scale, <code>__call__</code> can update internal state or run bookkeeping hooks (PyTorch uses that when you run <code>layer(x)</code>). Third, a generator is not an active worker — it runs zero lines until pulled (making <code>crate_size=0</code> raise lazily), stays frozen between pulls, and expires after one pass.
+  <b>Where this analogy breaks:</b> Paper binders and human loaders diverge from Python in three ways. First, <code>list(items)</code> is a <b>shallow</b> copy — it clones the outer list, not mutable lists or dicts nested inside it (inner edits still alias per <code>00.03</code>). Second, unlike a fixed scale, <code>__call__</code> can update internal state or run bookkeeping hooks (PyTorch uses that when you run <code>layer(x)</code>). Third, a generator is not an active worker — it runs zero lines until pulled (making <code>crate_size=0</code> raise lazily), stays frozen between pulls, and expires after one pass.
 </div>
 
-<p>Here is the 1-to-1 bridge from our Parcel Dispatch Desk to the <code>00.03</code> exercise and the stages ahead:</p>
+<p>Here is the 1-to-1 bridge from our Parcel Dispatch Desk to the <code>00.08</code> exercise and the stages ahead:</p>
 
 <div class="table-wrap"><table>
   <thead>
     <tr>
       <th>Desk Tool</th>
       <th>Python Hook</th>
-      <th><code>00.03</code> Exercise</th>
+      <th><code>00.08</code> Exercise</th>
       <th>Next in the Book</th>
     </tr>
   </thead>
@@ -553,7 +553,7 @@ for step, crate in enumerate(pack_crates(orders, crate_size=2)):
 
 <h3>When NOT to write a class or generator</h3>
 <ul>
-  <li><b>Stateless math:</b> When nothing needs to persist across calls (like <code>00.02</code>'s <code>mean</code> or <code>min_max_scale</code>), a plain function is cleaner than a class.</li>
+  <li><b>Stateless math:</b> When nothing needs to persist across calls (like <code>00.07</code>'s <code>mean</code> or <code>min_max_scale</code>), a plain function is cleaner than a class.</li>
   <li><b>Small reusable sequences:</b> If you need <code>len(batches)</code>, <code>batches[-1]</code>, or multiple passes over small data, return a plain <code>list</code> instead of a generator.</li>
   <li><b>Unclear operators:</b> Overload <code>+</code> and <code>*</code> only when the math meaning is unmistakable (vectors, matrices, autograd values); otherwise use a named method.</li>
 </ul>
@@ -665,7 +665,7 @@ for step, crate in enumerate(pack_crates(orders, crate_size=2)):
         `meter(${fmt(weight)}) → meter.__call__(${fmt(weight)}) → ${fmt(rate)} * ${fmt(weight)} ${bTerm} = `,
         V.el("span", { style: "display:inline-block;padding:1px 8px;border-radius:6px;background:var(--ok);color:var(--on-accent);font-weight:700" }, fmt(fee))
       );
-      note.textContent = `Same instance reused: self.rate (${fmt(rate)}) and self.base (${fmt(base)}) — the w and b from 00.02 — stay pinned while weight changes.`;
+      note.textContent = `Same instance reused: self.rate (${fmt(rate)}) and self.base (${fmt(base)}) — the w and b from 00.07 — stay pinned while weight changes.`;
     }
 
     rSlider.addEventListener("input", () => { rate = Number(rSlider.value); paint(); });

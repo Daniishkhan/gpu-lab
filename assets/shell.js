@@ -234,6 +234,8 @@
       crumbs.append(h("span", { class: "sep" }, "/"), h("span", { class: "cur" }, "GPU & Voice Workbench"));
     } else if (PAGE === "cheatsheet") {
       crumbs.append(h("span", { class: "sep" }, "/"), h("span", { class: "cur" }, "Reference cheatsheet"));
+    } else if (PAGE === "python-cheatsheet") {
+      crumbs.append(h("span", { class: "sep" }, "/"), h("span", { class: "cur" }, "Python cheatsheet"));
     }
     const sideBtn = iconButton("panelL", "Toggle sidebar  [", toggleSidebar);
     toggles.side.push(sideBtn);
@@ -315,6 +317,7 @@
     nav.append(
       h("a", { class: "nav-link" + (PAGE === "home" ? " active" : ""), href: `${ROOT}/index.html` }, icon("home"), "Home"),
       h("a", { class: "nav-link" + (PAGE === "workbench" ? " active" : ""), href: `${ROOT}/workbench.html` }, icon("gpu"), "GPU & Voice workbench"),
+      h("a", { class: "nav-link" + (PAGE === "python-cheatsheet" ? " active" : ""), href: `${ROOT}/python-cheatsheet.html` }, icon("book"), "Python cheatsheet"),
       h("a", { class: "nav-link" + (PAGE === "cheatsheet" ? " active" : ""), href: `${ROOT}/reference-cheatsheet.html` }, icon("hash"), "Reference cheatsheet"));
     const chapters = buildChapterNav();
     if (window.SWETrack) {
@@ -540,6 +543,7 @@
     items.push(
       { grp: "Workspace", icon: "home", title: "Home · Zero-abstraction spine dashboard", href: `${ROOT}/index.html`, where: "" },
       { grp: "Workspace", icon: "gpu", title: "GPU & Voice workbench · VRAM calculator, latency budget & run log", href: `${ROOT}/workbench.html`, where: "" },
+      { grp: "Workspace", icon: "book", title: "Python cheatsheet · Searchable Python 3.10–3.12 quick lookup", href: `${ROOT}/python-cheatsheet.html`, where: "" },
       { grp: "Workspace", icon: "hash", title: "Reference cheatsheet · Gemma 4, PyTorch, LoRA, vLLM & Voice stack", href: `${ROOT}/reference-cheatsheet.html`, where: "" });
     for (const s of C.sections) {
       const written = s.concepts.filter((c) => c.status !== "outline");
